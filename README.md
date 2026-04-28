@@ -1,4 +1,8 @@
-# crawl-rs
+# Crawl RS
+
+<p align="center">
+  <img src="assets/logo.png" width="350" alt="Crawl RS Logo">
+</p>
 
 A classic ASCII roguelike in pure terminal Rust. Procedurally generated
 dungeons, turn-based combat, permadeath. Runs over SSH; scales from a phone
