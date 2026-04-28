@@ -1,0 +1,73 @@
+//! Render systems: tiles first, entities on top. Both write into the
+//! shared draw buffer; the buffer's diff flush decides what hits stdout.
+
+use crossterm::style::Color;
+use hecs::World;
+
+use crate::ecs::components::{FieldOfView, Player, Position, Renderable};
+use crate::map::fov::Visibility;
+use crate::map::Map;
+use crate::ui::{Buffer, Cell};
+
+pub fn draw_map(map: &Map, fov: Option<&Visibility>, buffer: &mut Buffer) {
+    let bw = buffer.width() as i32;
+    let bh = buffer.height() as i32;
+    for (x, y, tile) in map.iter() {
+        if x < 0 || y < 0 || x >= bw || y >= bh {
+            continue;
+        }
+        let (visible, revealed) = match fov {
+            Some(v) => (v.is_visible(x, y), v.is_revealed(x, y)),
+            None => (true, true),
+        };
+        if !visible && !revealed {
+            // Unknown — leave as blank background.
+            buffer.put(x as u16, y as u16, Cell::BLANK);
+            continue;
+        }
+        let fg = if visible {
+            tile.fg()
+        } else {
+            // Memory: dim everything to dark grey for a uniform "fog" feel.
+            Color::DarkGrey
+        };
+        buffer.put(x as u16, y as u16, Cell::new(tile.glyph(), fg, tile.bg()));
+    }
+}
+
+/// Locates the player's FOV component so `draw_map` and `draw_entities`
+/// stay in sync with the same visibility data.
+pub fn player_fov(world: &World) -> Option<Visibility> {
+    let mut found: Option<Visibility> = None;
+    for (_, (_, fov)) in world.query::<(&Player, &FieldOfView)>().iter() {
+        found = Some(fov.view.clone());
+        break;
+    }
+    found
+}
+
+pub fn draw_entities(world: &World, fov: Option<&Visibility>, buffer: &mut Buffer) {
+    let mut entries: Vec<(i32, i32, Renderable)> = world
+        .query::<(&Position, &Renderable)>()
+        .iter()
+        .filter(|(_, (pos, _))| match fov {
+            Some(v) => v.is_visible(pos.x, pos.y),
+            None => true,
+        })
+        .map(|(_, (pos, render))| (pos.x, pos.y, *render))
+        .collect();
+    entries.sort_by_key(|(_, _, r)| r.layer);
+
+    let w = buffer.width() as i32;
+    let h = buffer.height() as i32;
+    for (x, y, render) in entries {
+        if x < 0 || y < 0 || x >= w || y >= h {
+            continue;
+        }
+        buffer.put(
+            x as u16,
+            y as u16,
+            Cell::new(render.glyph, render.fg, render.bg),
+        );
+    }
+}

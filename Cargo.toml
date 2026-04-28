@@ -1,0 +1,40 @@
+[package]
+name = "crawl-rs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "Terminal ASCII roguelike — turn-based, procgen, permadeath."
+license = "MIT"
+repository = "https://github.com/drasogun/crawl-rs"
+readme = "README.md"
+keywords = ["roguelike", "game", "terminal", "ecs", "ascii"]
+categories = ["games", "command-line-utilities"]
+
+[dependencies]
+anyhow = "1"
+crossterm = "0.27"
+hecs = "0.10"
+rand = "0.8"
+rand_pcg = "0.3"
+serde = { version = "1", features = ["derive"] }
+bincode = "1"
+toml = "0.8"
+directories = "5"
+# Transitive pins so MSRV 1.75 (Cargo 1.75) keeps building. hashbrown 0.17
+# and indexmap 2.8+ require edition2024 (Rust 1.85). Bump these together
+# with `rust-version` if MSRV moves.
+indexmap = ">=2, <2.8"
+hashbrown = ">=0.14, <0.17"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 1
+
+[[bin]]
+name = "crawl-rs"
+path = "src/main.rs"

@@ -1,0 +1,19 @@
+# Notable seeds for first impressions.
+#
+# Run with `crawl-rs --seed <N>` to skip the title screen and start a
+# deterministic run. The seed is also dumped at the bottom of the HUD and
+# in the game-over / victory summary, so you can copy it from there.
+#
+# Seeds were sampled by `crawl-rs --dump --seed <N> --count 1 --width 60
+# --height 22` and visually inspected.
+
+1   # tight north-west spawn, three corridors fan out east
+2   # twisty hub: nine rooms link through a single central pillar
+3   # long southern hall — feels like a basilica
+4   # symmetric on the vertical axis; rare for BSP
+5   # unforgiving: down-stairs across two long open rooms with line-of-sight
+
+# Some larger / smaller layouts:
+0xCAFE        # roomy cave-like layout when paired with --width 100
+0xBEEF        # tight cells, claustrophobic — good for melee runs
+0x1234567890  # a long, weaving corridor — test the renderer's diff path
