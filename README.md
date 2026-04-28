@@ -1,12 +1,15 @@
-# Crawl RS
+# ⚔️ Crawl RS: Roguelike game in terminal
+
 
 <p align="center">
-  <img src="assets/logo.png" width="350" alt="Crawl RS Logo">
+  <img src="assets/logo.png" width="500" alt="Crawl RS Logo">
 </p>
 
 A classic ASCII roguelike in pure terminal Rust. Procedurally generated
 dungeons, turn-based combat, permadeath. Runs over SSH; scales from a phone
 shell to a 4K terminal.
+
+---
 
 ```
 ############################################################
