@@ -67,7 +67,7 @@ fn build_lines(world: &World, player: Entity, cursor: usize) -> Vec<(String, Col
     }
     out.push((String::new(), Color::Reset));
     out.push((
-        "  up/down select   f use/equip   s sell   esc/i close".to_string(),
+        "  up/down select   f use/equip   g sell   esc/i close".to_string(),
         Color::DarkGrey,
     ));
     out

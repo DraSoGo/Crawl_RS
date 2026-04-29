@@ -6,8 +6,8 @@ use hecs::World;
 
 use crate::ecs::systems::render::{draw_entities, draw_map, player_fov};
 use crate::run_state::{
-    player_combat, player_hp, player_hunger, player_kills, player_level, player_xp,
-    RunState, UiMode, HUD_ROWS, LOG_ROWS, RESERVED_ROWS,
+    player_combat, player_hp, player_kills, player_level, player_xp, RunState, UiMode,
+    HUD_ROWS, LOG_ROWS, RESERVED_ROWS,
 };
 use crate::ui::{menus, Buffer, MessageLog, Severity};
 
@@ -57,9 +57,8 @@ fn draw_hud(buffer: &mut Buffer, state: &RunState) {
     let xp = player_xp(&state.world).unwrap_or(0);
     let level = player_level(&state.world).unwrap_or(1);
     let next = crate::ecs::components::Progression::xp_for_next(level);
-    let hunger = player_hunger(&state.world).unwrap_or("?");
     let line = format!(
-        "lv {level} ({xp}/{next})  depth {}  hp {hp}/{max_hp}  atk {atk}  def {def}  {hunger}  seed {:016x}  wasd qezx . f i > esc",
+        "lv {level} ({xp}/{next})  depth {}  hp {hp}/{max_hp}  atk {atk}  def {def}  seed {:016x}  wasd qezx . f i > esc",
         state.depth, state.seed
     );
     let truncated = truncate_to_width(&line, buffer.width() as usize);

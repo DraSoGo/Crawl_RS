@@ -95,6 +95,13 @@ fn collect_ready_mobs(world: &World) -> Vec<Entity> {
 
 fn spend_energy(world: &mut World, entity: Entity) {
     if let Ok(mut energy) = world.get::<&mut Energy>(entity) {
-        energy.value -= TURN_THRESHOLD;
+        // Drain at least one threshold's worth, and cap remainder at 0.
+        // Without the cap, fast mobs (speed > player speed) accumulate
+        // surplus energy and act multiple times within a single player
+        // turn, which feels chaotic and erodes the "1–2 tiles per turn"
+        // movement budget. A capped drain still preserves slow-mob skips
+        // (a speed-6 mob will fail to reach the threshold every other
+        // round vs a speed-10 player).
+        energy.value = (energy.value - TURN_THRESHOLD).min(0);
     }
 }

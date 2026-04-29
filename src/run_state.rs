@@ -239,6 +239,7 @@ pub fn player_combat(world: &World) -> Option<(i32, i32)> {
         .next()
 }
 
+#[allow(dead_code)]
 pub fn player_hunger(world: &World) -> Option<&'static str> {
     use crate::ecs::components::HungerState;
     let player = world.query::<&Player>().iter().next().map(|(e, _)| e)?;

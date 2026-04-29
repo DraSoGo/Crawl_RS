@@ -5,16 +5,18 @@ use hecs::{Entity, World};
 use rand::Rng;
 
 use crate::ecs::components::{
-    Ai, BlocksTile, Energy, Faction, FieldOfView, HungerClock, HungerState, Mob, Name,
-    Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
+    Ai, BlocksTile, Dead, Energy, Faction, FieldOfView, HungerClock, HungerState, Mob,
+    Name, Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
 };
 use crate::ui::{MessageLog, Severity};
 
 pub fn tick<R: Rng>(world: &mut World, log: &mut MessageLog, rng: &mut R) {
     tick_status_effects(world, log);
     tick_regen_components(world);
-    tick_hunger(world, log);
+    // Hunger system disabled per design call: too much bookkeeping for v0.1.
+    // `tick_hunger` is retained for reference but no longer invoked.
     tick_summoners(world, log, rng);
+    check_deaths(world);
 }
 
 fn tick_status_effects(world: &mut World, log: &mut MessageLog) {
@@ -135,6 +137,7 @@ fn tick_regen_components(world: &mut World) {
     }
 }
 
+#[allow(dead_code)]
 fn tick_hunger(world: &mut World, log: &mut MessageLog) {
     let player_entity = match world.query::<&Player>().iter().next().map(|(e, _)| e) {
         Some(e) => e,
@@ -163,6 +166,26 @@ fn tick_hunger(world: &mut World, log: &mut MessageLog) {
     if drain {
         if let Ok(mut s) = world.get::<&mut Stats>(player_entity) {
             s.hp -= 1;
+        }
+    }
+}
+
+/// Clamp negative HP to zero (so HUDs never show garbage values) and mark
+/// any zero-HP entity as `Dead` so the main loop can switch to GameOver and
+/// the reaper can despawn dead mobs.
+fn check_deaths(world: &mut World) {
+    let zeros: Vec<hecs::Entity> = world
+        .query::<&Stats>()
+        .iter()
+        .filter(|(_, s)| s.hp <= 0)
+        .map(|(e, _)| e)
+        .collect();
+    for entity in zeros {
+        if let Ok(mut s) = world.get::<&mut Stats>(entity) {
+            s.hp = 0;
+        }
+        if world.get::<&Dead>(entity).is_err() {
+            let _ = world.insert_one(entity, Dead);
         }
     }
 }
