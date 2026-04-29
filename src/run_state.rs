@@ -8,6 +8,7 @@ use hecs::World;
 use rand::SeedableRng;
 use rand_pcg::Pcg64Mcg;
 
+use crate::character::INVENTORY_SLOTS_PER_LEVEL;
 use crate::codex::{self, BookPage, CodexProfile};
 pub use crate::ecs::components::HungerClock;
 use crate::ecs::components::{
@@ -37,6 +38,7 @@ pub enum UiMode {
     Playing,
     Inventory,
     Book,
+    Status,
     GameOver,
     Victory,
 }
@@ -335,7 +337,8 @@ pub fn award_xp(world: &mut World, log: &mut MessageLog, amount: i32) {
         hp_bonus_total = hp_bump;
     }
     log.status(format!(
-        "you reach level {new_level}! (+{hp_bonus_total} max hp, +{levels_gained} atk/def)"
+        "you reach level {new_level}! (+{hp_bonus_total} max hp, +{levels_gained} atk/def, +{} pack slots)",
+        levels_gained as usize * INVENTORY_SLOTS_PER_LEVEL
     ));
 }
 

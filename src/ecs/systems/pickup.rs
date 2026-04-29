@@ -5,7 +5,10 @@
 
 use hecs::{Entity, World};
 
-use crate::ecs::components::{Amulet, Inventory, Item, Name, Position, WantsToPickup};
+use crate::character::inventory_capacity;
+use crate::ecs::components::{
+    Amulet, Inventory, Item, Name, Position, Progression, WantsToPickup,
+};
 use crate::ui::MessageLog;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -47,10 +50,15 @@ pub fn run(world: &mut World, log: &mut MessageLog) -> PickupOutcome {
                 continue;
             }
         };
-        let inventory_full = world
-            .get::<&Inventory>(picker)
-            .map(|inv| inv.is_full())
-            .unwrap_or(true);
+        let inventory_full = match (
+            world.get::<&Inventory>(picker),
+            world.get::<&Progression>(picker),
+        ) {
+            (Ok(inv), Ok(progression)) => {
+                inv.items.len() >= inventory_capacity(progression.level)
+            }
+            _ => true,
+        };
         if inventory_full {
             log.info("your pack is full.");
             continue;

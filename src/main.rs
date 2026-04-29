@@ -15,6 +15,7 @@
 
 mod app;
 mod book;
+mod character;
 mod cli;
 mod codex;
 mod data;

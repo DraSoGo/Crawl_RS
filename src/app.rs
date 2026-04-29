@@ -234,6 +234,14 @@ fn handle_run_key(
                 Ok(RunOutcome::None)
             }
         }
+        UiMode::Status => {
+            if handle_status_key(key) {
+                state.mode = UiMode::Playing;
+                Ok(RunOutcome::Redraw)
+            } else {
+                Ok(RunOutcome::None)
+            }
+        }
         UiMode::Playing => match handle_key(&mut state.world, key) {
             PlayerAction::Quit => {
                 save_run(state);
@@ -245,6 +253,10 @@ fn handle_run_key(
             }
             PlayerAction::OpenBook => {
                 state.mode = UiMode::Book;
+                Ok(RunOutcome::Redraw)
+            }
+            PlayerAction::OpenStatus => {
+                state.mode = UiMode::Status;
                 Ok(RunOutcome::Redraw)
             }
             PlayerAction::Descend => {
@@ -259,6 +271,10 @@ fn handle_run_key(
             PlayerAction::None => Ok(RunOutcome::None),
         },
     }
+}
+
+fn handle_status_key(key: KeyEvent) -> bool {
+    matches!(key.code, KeyCode::Char('k') | KeyCode::Esc | KeyCode::Enter)
 }
 
 fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
@@ -277,7 +293,7 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
             }
             Some(false)
         }
-        KeyCode::Down | KeyCode::Char('x') => {
+        KeyCode::Down | KeyCode::Char('s') => {
             if inv_len > 0 {
                 state.inventory_cursor = (state.inventory_cursor + 1) % inv_len;
             }

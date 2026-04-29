@@ -9,7 +9,7 @@ use crate::run_state::{
     player_combat, player_hp, player_kills, player_level, player_xp, RunState, UiMode,
     HUD_ROWS, LOG_ROWS, RESERVED_ROWS,
 };
-use crate::ui::{book, menus, Buffer, MessageLog, Severity};
+use crate::ui::{book, menus, status, Buffer, MessageLog, Severity};
 
 pub fn draw_run(buffer: &mut Buffer, state: &RunState) {
     match state.mode {
@@ -18,6 +18,7 @@ pub fn draw_run(buffer: &mut Buffer, state: &RunState) {
             menus::draw_inventory(&state.world, buffer, state.inventory_cursor)
         }
         UiMode::Book => book::draw_book(state, buffer),
+        UiMode::Status => status::draw_status(state, buffer),
         UiMode::GameOver => draw_death_screen(buffer, state),
         UiMode::Victory => draw_victory_screen(buffer, state),
     }
@@ -59,7 +60,7 @@ fn draw_hud(buffer: &mut Buffer, state: &RunState) {
     let level = player_level(&state.world).unwrap_or(1);
     let next = crate::ecs::components::Progression::xp_for_next(level);
     let line = format!(
-        "lv {level} ({xp}/{next})  depth {}  hp {hp}/{max_hp}  atk {atk}  def {def}  seed {:016x}  wasd qezx . f i b > esc",
+        "lv {level} ({xp}/{next})  depth {}  hp {hp}/{max_hp}  atk+{atk}  def-{def}  seed {:016x}  wasd qezx . f i b k > esc",
         state.depth, state.seed
     );
     let truncated = truncate_to_width(&line, buffer.width() as usize);

@@ -3,9 +3,10 @@
 use crossterm::style::Color;
 use hecs::{Entity, World};
 
+use crate::character::inventory_capacity;
 use crate::ecs::components::{
     AmuletEffect, Equipment, Inventory, Item, ItemKind, Name, Player, PotionEffect,
-    RingEffect, ScrollKind, ThrowableKind, WandKind,
+    Progression, RingEffect, ScrollKind, ThrowableKind, WandKind,
 };
 use crate::ui::Buffer;
 
@@ -42,12 +43,17 @@ fn build_lines(
     screen_rows: usize,
 ) -> Vec<(String, Color)> {
     let mut out: Vec<(String, Color)> = Vec::new();
-    out.push(("Inventory".to_string(), Color::Yellow));
-    out.push((String::new(), Color::Reset));
     let inv = match world.get::<&Inventory>(player) {
         Ok(i) => i.clone(),
         Err(_) => return out,
     };
+    let level = world
+        .get::<&Progression>(player)
+        .map(|p| p.level)
+        .unwrap_or(1);
+    let capacity = inventory_capacity(level);
+    out.push((format!("Inventory {}/{}", inv.items.len(), capacity), Color::Yellow));
+    out.push((String::new(), Color::Reset));
     let equipment = world
         .get::<&Equipment>(player)
         .map(|e| *e)

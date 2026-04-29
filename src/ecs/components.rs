@@ -353,18 +353,11 @@ impl Default for ItemKind {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct WantsToPickup;
 
-/// Inventory: ordered list of held item entities (max 26 — keys a..z).
+/// Inventory: ordered list of held item entities. Capacity is derived from the
+/// player's current level.
 #[derive(Clone, Debug, Default)]
 pub struct Inventory {
     pub items: Vec<hecs::Entity>,
-}
-
-impl Inventory {
-    pub const MAX_SLOTS: usize = 26;
-
-    pub fn is_full(&self) -> bool {
-        self.items.len() >= Self::MAX_SLOTS
-    }
 }
 
 /// What's currently equipped. Slot values point to entities held in
