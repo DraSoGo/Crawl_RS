@@ -9,6 +9,8 @@ A classic ASCII roguelike in pure terminal Rust. Procedurally generated
 dungeons, turn-based combat, permadeath. Runs over SSH; scales from a phone
 shell to a 4K terminal.
 
+Current version: `0.1.0`
+
 ---
 
 <p align="center"><img src="assets/example.gif"/></p>
@@ -109,6 +111,9 @@ crawl-rs --dump --count 5 --seed 1
 | `.`                        | wait one turn                 |
 | `f` or `,`                 | pick up item                  |
 | `i`                        | open inventory                |
+| `b`                        | open book / codex             |
+| `k`                        | open character status         |
+| `h`                        | open key help                 |
 | `>` (on `>` tile)          | descend stairs                |
 | `esc` / `ctrl-c`           | save and quit                 |
 
@@ -117,17 +122,25 @@ crawl-rs --dump --count 5 --seed 1
 death/victory screens, `q` still works as quit.
 
 In the inventory screen, the up/down arrows (or `w` / `x`) move the cursor,
-`f` (or `enter`) uses or equips the highlighted slot, and `s` sells the
-slot for XP (equipped items auto-unequip on sale). Use a potion of healing
-for HP, a scroll of mapping to reveal the level, a scroll of teleport to
-fling yourself, or wear armor / wield weapons for permanent stat bonuses.
-`esc` or `i` closes the screen without spending a turn.
+`f` (or `enter`) uses or equips the highlighted slot, and `g` sells the
+slot for XP (equipped items auto-unequip on sale). `esc` or `i` closes the
+screen without spending a turn.
+
+The book (`b`) has mob and item pages. Entries stay hidden as `???` until
+you first see that mob or item, then the codex shows stats, abilities,
+range, duration, and related notes.
+
+The status screen (`k`) shows your current final values: HP, `atk+`, `def-`,
+move, sight, XP progress, kills, pack size, equipment, and active effects.
+
+The help screen (`h`) shows the in-game `Key / Action` list so controls are
+always available without leaving the run.
 
 ## Levelling
 
 Killing mobs and selling items both award XP. Each level requires
 `50 × current_level` XP. On level-up the player gains **+5 max HP, +5 HP,
-+1 attack, +1 defense**. The HUD shows current level + progress as
++1 attack, +1 defense, +5 inventory slots**. The HUD shows current level + progress as
 `lv N (xp/needed)`.
 
 ## How it works
@@ -135,8 +148,11 @@ Killing mobs and selling items both award XP. Each level requires
 - ECS via [`hecs`](https://crates.io/crates/hecs)
 - BSP dungeon generation per level (10 levels, increasing density)
 - Recursive shadowcasting FOV (8 octants, radius 8) with memory tiles
-- Energy-based scheduler (`speed` per tick, act at 100)
-- Bump-to-attack combat: `max(1, atk + 1d4 - def)`
+- Round-based movement (`move_tiles` per round)
+- Combat damage: `max(1, 1d6 + atk - def)`
+- Player attacks resolve before the enemy round; if you kill a mob first, it does not hit back
+- Ranged mobs attack from 2 tiles away and cannot move on the same round they attack
+- Persistent book / codex discoveries saved separately from the run save
 - Bincode save (single slot, deleted on death)
 - Deterministic given `--seed N` — record this in any bug report
 
