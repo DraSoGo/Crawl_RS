@@ -3,6 +3,8 @@
 use crossterm::style::Color;
 use serde::{Deserialize, Serialize};
 
+use crate::config;
+
 /// Tile coordinate. Origin is top-left; +x is right, +y is down.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Position {
@@ -187,8 +189,8 @@ pub struct HungerClock {
 }
 
 impl HungerClock {
-    pub const STARVE_THRESHOLD: i32 = 0;
-    pub const HUNGRY_THRESHOLD: i32 = 200;
+    pub const STARVE_THRESHOLD: i32 = config::HUNGER.starve_threshold;
+    pub const HUNGRY_THRESHOLD: i32 = config::HUNGER.hungry_threshold;
     pub fn new(max: i32) -> Self {
         Self { satiation: max, max_satiation: max }
     }
@@ -260,7 +262,7 @@ impl Default for Progression {
 impl Progression {
     /// XP required to advance from `level` to `level + 1`.
     pub fn xp_for_next(level: u32) -> i32 {
-        50 * (level as i32).max(1)
+        config::PROGRESSION.xp_per_level * (level as i32).max(1)
     }
 }
 

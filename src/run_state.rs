@@ -8,7 +8,7 @@ use hecs::World;
 use rand::SeedableRng;
 use rand_pcg::Pcg64Mcg;
 
-use crate::character::INVENTORY_SLOTS_PER_LEVEL;
+use crate::config;
 use crate::codex::{self, BookPage, CodexProfile};
 pub use crate::ecs::components::HungerClock;
 use crate::ecs::components::{
@@ -22,16 +22,11 @@ use crate::map::{Map, Tile};
 use crate::save::{self, scores::{self, ScoreEntry}};
 use crate::ui::{Buffer, MessageLog};
 
-pub const PLAYER_LAYER: u8 = 200;
-pub const HUD_ROWS: u16 = 1;
-pub const LOG_ROWS: u16 = 5;
+pub const PLAYER_LAYER: u8 = config::UI.player_layer;
+pub const HUD_ROWS: u16 = config::UI.hud_rows;
+pub const LOG_ROWS: u16 = config::UI.log_rows;
 pub const RESERVED_ROWS: u16 = HUD_ROWS + LOG_ROWS;
-pub const PLAYER_FOV_RADIUS: i32 = 8;
-const PLAYER_BASE_HP: i32 = 20;
-const PLAYER_BASE_ATTACK: i32 = 4;
-const PLAYER_BASE_DEFENSE: i32 = 1;
-const PLAYER_BASE_MOVE: i32 = 1;
-const DESCENT_HEAL: i32 = 5;
+pub const PLAYER_FOV_RADIUS: i32 = config::PLAYER.fov_radius;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UiMode {
@@ -104,16 +99,16 @@ fn spawn_player_skeleton(world: &mut World) {
         Player,
         BlocksTile,
         Stats::new(
-            PLAYER_BASE_HP,
-            PLAYER_BASE_ATTACK,
-            PLAYER_BASE_DEFENSE,
-            PLAYER_BASE_MOVE,
+            config::PLAYER.base_hp,
+            config::PLAYER.base_attack,
+            config::PLAYER.base_defense,
+            config::PLAYER.base_move,
         ),
         Progression::default(),
         Inventory::default(),
         Equipment::default(),
         StatusEffects::default(),
-        HungerClock::new(800),
+        HungerClock::new(config::PLAYER.start_satiation),
         Name("you".to_string()),
         FieldOfView::new(PLAYER_FOV_RADIUS, 1, 1),
     ));
@@ -162,7 +157,7 @@ pub fn try_descend(state: &mut RunState, buffer: &Buffer) {
     level::purge_non_player(&mut state.world);
     let (w, h) = level_dims(buffer);
     state.map = level::build_level(&mut state.world, state.seed, state.depth, w, h);
-    heal_player(&mut state.world, DESCENT_HEAL);
+    heal_player(&mut state.world, config::PLAYER.descent_heal);
     update_visibility_and_codex(state);
     if state.depth == FINAL_DEPTH {
         state
@@ -329,16 +324,18 @@ pub fn award_xp(world: &mut World, log: &mut MessageLog, amount: i32) {
         return;
     }
     if let Ok(mut stats) = world.get::<&mut Stats>(player) {
-        let hp_bump = 5 * levels_gained as i32;
+        let hp_bump = config::PLAYER.level_up_hp * levels_gained as i32;
         stats.max_hp += hp_bump;
         stats.hp = (stats.hp + hp_bump).min(stats.max_hp);
-        stats.attack += levels_gained as i32;
-        stats.defense += levels_gained as i32;
+        stats.attack += config::PLAYER.level_up_attack * levels_gained as i32;
+        stats.defense += config::PLAYER.level_up_defense * levels_gained as i32;
         hp_bonus_total = hp_bump;
     }
+    let attack_bump = config::PLAYER.level_up_attack * levels_gained as i32;
+    let defense_bump = config::PLAYER.level_up_defense * levels_gained as i32;
     log.status(format!(
-        "you reach level {new_level}! (+{hp_bonus_total} max hp, +{levels_gained} atk/def, +{} pack slots)",
-        levels_gained as usize * INVENTORY_SLOTS_PER_LEVEL
+        "you reach level {new_level}! (+{hp_bonus_total} max hp, +{attack_bump} atk, +{defense_bump} def, +{} pack slots)",
+        levels_gained as usize * config::PROGRESSION.inventory_slots_per_level
     ));
 }
 

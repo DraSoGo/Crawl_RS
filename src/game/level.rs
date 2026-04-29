@@ -8,6 +8,7 @@ use hecs::{Entity, World};
 use rand::{Rng, SeedableRng};
 use rand_pcg::Pcg64Mcg;
 
+use crate::config;
 use crate::data::items::{self, ItemTemplate};
 use crate::data::mobs::{self, MobTemplate};
 use crate::ecs::components::{
@@ -17,7 +18,7 @@ use crate::ecs::components::{
 use crate::map::gen::{bsp_generate, BspConfig, Dungeon};
 use crate::map::Map;
 
-pub const FINAL_DEPTH: u32 = 10;
+pub const FINAL_DEPTH: u32 = config::WORLD.final_depth;
 const MOB_LAYER: u8 = 100;
 const ITEM_LAYER: u8 = 50;
 const AMULET_LAYER: u8 = 60;
@@ -127,9 +128,11 @@ fn spawn_mobs(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64M
 
 fn spawn_mob(world: &mut World, t: &MobTemplate, x: i32, y: i32, depth: u32) {
     // +25% HP/atk per depth level — by depth 10 mobs are ~3.25× tier-1 stats.
-    let scale = 1.0 + 0.25 * ((depth as f32) - 1.0).max(0.0);
-    let max_hp = ((t.max_hp as f32) * scale).ceil() as i32;
-    let attack = ((t.attack as f32) * scale).round() as i32;
+    let hp_scale = 1.0 + config::WORLD.depth_hp_scale * ((depth as f32) - 1.0).max(0.0);
+    let attack_scale =
+        1.0 + config::WORLD.depth_attack_scale * ((depth as f32) - 1.0).max(0.0);
+    let max_hp = ((t.max_hp as f32) * hp_scale).ceil() as i32;
+    let attack = ((t.attack as f32) * attack_scale).round() as i32;
     let glyph = match t.ai {
         // Mimics start hidden as their disguise glyph.
         crate::ecs::components::AiKind::Mimic { disguise, .. } => disguise,
@@ -237,7 +240,8 @@ fn tile_has_item(world: &World, x: i32, y: i32) -> bool {
 }
 
 fn floor_difficulty_budget(depth: u32) -> u32 {
-    10 + depth.saturating_mul(3)
+    config::WORLD.floor_difficulty_base
+        + depth.saturating_mul(config::WORLD.floor_difficulty_per_depth)
 }
 
 #[cfg(test)]

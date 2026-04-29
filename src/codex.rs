@@ -7,9 +7,11 @@ use crate::data::{
     items::{self, ItemTemplate},
     mobs::{self, MobTemplate},
 };
-use crate::ecs::components::{
-    AiKind, AmuletEffect, FieldOfView, Item, ItemKind, Mob, Name, Player, Position,
-    PotionEffect, RingEffect, ScrollKind, ThrowableKind, WandKind,
+use crate::ecs::components::{FieldOfView, Item, Mob, Name, Player, Position};
+
+pub use crate::codex_text::{
+    describe_item_function, describe_mob_abilities, item_duration, item_range, mob_ai_label,
+    mob_attack_range,
 };
 
 const SUMMONED_PREFIX: &str = "summoned ";
@@ -118,276 +120,29 @@ pub fn apply_discoveries(profile: &mut CodexProfile, discoveries: VisibleDiscove
     changed
 }
 
-pub fn describe_mob_abilities(template: &MobTemplate) -> String {
-    let mut parts: Vec<String> = Vec::new();
-
-    match template.ai {
-        AiKind::Hostile => {}
-        AiKind::Sleeper { wake_radius } => {
-            parts.push(format!("sleeps until you come within {wake_radius} tiles"));
-        }
-        AiKind::Fleeing { flee_below_pct } => {
-            parts.push(format!("flees below {flee_below_pct}% hp"));
-        }
-        AiKind::Ranged { prefer_range } => {
-            parts.push(format!("prefers ranged attacks at {prefer_range} tiles"));
-        }
-        AiKind::Mimic { .. } => {
-            parts.push("disguises itself until revealed".to_string());
-        }
-    }
-
-    if let Some(on_hit) = template.on_hit {
-        if on_hit.poison_turns > 0 {
-            parts.push(format!(
-                "poisons on hit ({} dmg for {} turns)",
-                on_hit.poison_dmg, on_hit.poison_turns
-            ));
-        }
-        if on_hit.paralysis_turns > 0 {
-            parts.push(format!(
-                "paralyzes on hit ({} turns)",
-                on_hit.paralysis_turns
-            ));
-        }
-    }
-
-    if template.regen_per_turn > 0 {
-        parts.push(format!("regenerates {} hp/turn", template.regen_per_turn));
-    }
-    if template.invisible {
-        parts.push("invisible until adjacent".to_string());
-    }
-    if let Some((heal_amount, chance_pct)) = template.caster_heal {
-        parts.push(format!("self-heals {heal_amount} hp ({chance_pct}% chance/turn)"));
-    }
-    if let Some(chance_pct) = template.summoner_chance {
-        parts.push(format!("summons allies ({chance_pct}% chance/turn)"));
-    }
-    if template.flying {
-        parts.push("flying (currently informational)".to_string());
-    }
-
-    if parts.is_empty() {
-        "none".to_string()
-    } else {
-        parts.join("; ")
-    }
-}
-
-pub fn mob_ai_label(template: &MobTemplate) -> &'static str {
-    match template.ai {
-        AiKind::Hostile => "hostile",
-        AiKind::Sleeper { .. } => "sleeper",
-        AiKind::Fleeing { .. } => "fleeing",
-        AiKind::Ranged { .. } => "ranged",
-        AiKind::Mimic { .. } => "mimic",
-    }
-}
-
-pub fn mob_attack_range(template: &MobTemplate) -> &'static str {
-    match template.ai {
-        AiKind::Ranged { .. } => "2 tiles",
-        _ => "adjacent",
-    }
-}
-
-pub fn describe_item_function(template: &ItemTemplate) -> String {
-    match template.kind {
-        ItemKind::Potion(effect) => describe_potion(effect),
-        ItemKind::Scroll(scroll) => describe_scroll(scroll).to_string(),
-        ItemKind::Weapon { attack_bonus } => {
-            format!("Equip to gain +{attack_bonus} attack.")
-        }
-        ItemKind::Armor { defense_bonus } => {
-            format!("Equip to gain +{defense_bonus} defense.")
-        }
-        ItemKind::Ring(effect) => describe_ring(effect).to_string(),
-        ItemKind::AmuletItem(effect) => describe_amulet(effect).to_string(),
-        ItemKind::Wand { kind, charges } => describe_wand(kind, charges),
-        ItemKind::Throwable(kind) => describe_throwable(kind).to_string(),
-        ItemKind::Food { nutrition, poisonous } => {
-            if poisonous {
-                format!("Eat to restore {nutrition} satiation, but it poisons you.")
-            } else {
-                format!("Eat to restore {nutrition} satiation.")
-            }
-        }
-        ItemKind::Corpse => "No current use.".to_string(),
-    }
-}
-
-pub fn item_range(template: &ItemTemplate) -> &'static str {
-    match template.kind {
-        ItemKind::Potion(_) => "self",
-        ItemKind::Scroll(scroll) => match scroll {
-            ScrollKind::Mapping => "whole level",
-            ScrollKind::Teleport => "self",
-            ScrollKind::Identify => "none",
-            ScrollKind::MagicMissile => "nearest mob",
-            ScrollKind::EnchantWeapon | ScrollKind::EnchantArmor => "equipped gear",
-            ScrollKind::Fear => "1-tile radius",
-            ScrollKind::Summon => "adjacent tiles",
-            ScrollKind::Light => "self",
-            ScrollKind::Recall => "self",
-        },
-        ItemKind::Weapon { .. }
-        | ItemKind::Armor { .. }
-        | ItemKind::Ring(_)
-        | ItemKind::AmuletItem(_) => "self",
-        ItemKind::Wand { .. } => "nearest mob",
-        ItemKind::Throwable(kind) => match kind {
-            ThrowableKind::OilFlask => "adjacent tiles",
-            ThrowableKind::SmokeBomb => "2-tile radius",
-        },
-        ItemKind::Food { .. } | ItemKind::Corpse => "self",
-    }
-}
-
-pub fn item_duration(template: &ItemTemplate) -> &'static str {
-    match template.kind {
-        ItemKind::Potion(effect) => match effect {
-            PotionEffect::Heal(_)
-            | PotionEffect::GreaterHeal(_)
-            | PotionEffect::FullHeal
-            | PotionEffect::MaxHpUp(_)
-            | PotionEffect::CurePoison => "instant",
-            PotionEffect::BuffAttack { turns, .. } => turns_to_label(turns),
-            PotionEffect::BuffVision { turns, .. } => turns_to_label(turns),
-        },
-        ItemKind::Scroll(scroll) => match scroll {
-            ScrollKind::Fear => "10 turns",
-            ScrollKind::Light => "50 turns",
-            ScrollKind::Mapping
-            | ScrollKind::Teleport
-            | ScrollKind::Identify
-            | ScrollKind::MagicMissile
-            | ScrollKind::EnchantWeapon
-            | ScrollKind::EnchantArmor
-            | ScrollKind::Summon
-            | ScrollKind::Recall => "instant",
-        },
-        ItemKind::Weapon { .. }
-        | ItemKind::Armor { .. }
-        | ItemKind::Ring(_)
-        | ItemKind::AmuletItem(_) => "while equipped",
-        ItemKind::Wand { .. } => "instant",
-        ItemKind::Throwable(kind) => match kind {
-            ThrowableKind::OilFlask => "instant",
-            ThrowableKind::SmokeBomb => "5 turns",
-        },
-        ItemKind::Food { .. } | ItemKind::Corpse => "instant",
-    }
-}
-
-fn turns_to_label(turns: i32) -> &'static str {
-    match turns {
-        50 => "50 turns",
-        _ => "timed",
-    }
-}
-
 fn player_visibility(world: &World) -> Option<crate::map::fov::Visibility> {
     world
         .query::<(&Player, &FieldOfView)>()
         .iter()
-        .next()
         .map(|(_, (_, fov))| fov.view.clone())
-}
-
-fn describe_potion(effect: PotionEffect) -> String {
-    match effect {
-        PotionEffect::Heal(amount) => format!("Drink to restore up to {amount} HP."),
-        PotionEffect::GreaterHeal(amount) => {
-            format!("Drink to restore up to {amount} HP.")
-        }
-        PotionEffect::FullHeal => "Drink to fully restore HP.".to_string(),
-        PotionEffect::MaxHpUp(amount) => {
-            format!("Drink to raise max HP by {amount} and heal the same amount.")
-        }
-        PotionEffect::BuffAttack { amount, turns } => {
-            format!("Drink to gain +{amount} attack for {turns} turns.")
-        }
-        PotionEffect::BuffVision { amount, turns } => {
-            format!("Drink to gain +{amount} sight for {turns} turns.")
-        }
-        PotionEffect::CurePoison => "Drink to clear poison.".to_string(),
-    }
-}
-
-fn describe_scroll(scroll: ScrollKind) -> &'static str {
-    match scroll {
-        ScrollKind::Mapping => "Read to reveal the whole level map.",
-        ScrollKind::Teleport => "Read to teleport to a random floor tile.",
-        ScrollKind::Identify => "Read for no effect right now.",
-        ScrollKind::MagicMissile => "Read to hit the nearest mob for 6 damage.",
-        ScrollKind::EnchantWeapon => {
-            "Read to enchant your equipped weapon by +1 attack."
-        }
-        ScrollKind::EnchantArmor => {
-            "Read to enchant your equipped armor by +1 defense."
-        }
-        ScrollKind::Fear => "Read to frighten nearby mobs for 10 turns.",
-        ScrollKind::Summon => "Read to summon allied rats nearby.",
-        ScrollKind::Light => "Read to extend your sight radius by 4 for 50 turns.",
-        ScrollKind::Recall => "Read to return to the up-stair tile.",
-    }
-}
-
-fn describe_ring(effect: RingEffect) -> &'static str {
-    match effect {
-        RingEffect::Regen => "Equip to regenerate 1 HP each turn.",
-        RingEffect::Protection => "Equip to gain +1 defense.",
-        RingEffect::Vision => "Equip to gain +2 sight radius.",
-    }
-}
-
-fn describe_amulet(effect: AmuletEffect) -> &'static str {
-    match effect {
-        AmuletEffect::TeleportControl => "Equip as an amulet. Currently no effect.",
-    }
-}
-
-fn describe_wand(kind: WandKind, charges: i32) -> String {
-    let effect = match kind {
-        WandKind::Fire => "hit the nearest mob for 6-10 damage",
-        WandKind::Cold => "hit the nearest mob for 5-8 damage",
-        WandKind::Lightning => "hit the nearest mob for 8-12 damage",
-    };
-    format!("Zap to {effect}. Starts with {charges} charges.")
-}
-
-fn describe_throwable(kind: ThrowableKind) -> &'static str {
-    match kind {
-        ThrowableKind::OilFlask => {
-            "Throw to deal 6 damage to adjacent mobs."
-        }
-        ThrowableKind::SmokeBomb => {
-            "Throw to paralyze nearby mobs for 5 turns."
-        }
-    }
+        .next()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crossterm::style::Color;
-    use hecs::World;
-
-    use crate::data::{items, mobs};
-    use crate::ecs::components::{Item, Player, PotionEffect, Renderable};
 
     fn visible_world() -> World {
         let mut world = World::new();
         let mut fov = FieldOfView::new(8, 10, 10);
         fov.view.force_visible(2, 2);
-        fov.view.force_visible(4, 4);
         world.spawn((Player, fov));
         world
     }
 
     #[test]
-    fn visible_rat_unlocks_rat() {
+    fn visible_rat_is_discovered() {
         let mut world = visible_world();
         world.spawn((Mob, Position::new(2, 2), Name("rat".to_string())));
 
@@ -397,7 +152,7 @@ mod tests {
     }
 
     #[test]
-    fn visible_summoned_mob_unlocks_base_entry() {
+    fn summoned_names_unlock_base_entries() {
         let mut world = visible_world();
         world.spawn((
             Mob,
@@ -413,12 +168,13 @@ mod tests {
     #[test]
     fn unknown_names_are_ignored() {
         let mut world = visible_world();
-        world.spawn((Mob, Position::new(2, 2), Name("weird blob".to_string())));
+        world.spawn((Mob, Position::new(2, 2), Name("definitely fake".to_string())));
         world.spawn((
-            Position::new(4, 4),
-            Renderable::new('!', Color::White, Color::Reset, 50),
-            Item { kind: ItemKind::Potion(PotionEffect::Heal(8)) },
-            Name("mystery tonic".to_string()),
+            Position::new(2, 2),
+            Item {
+                kind: items::TEMPLATES[0].kind,
+            },
+            Name("mystery loot".to_string()),
         ));
 
         let discoveries = discover_visible_entries(&world);
@@ -428,48 +184,37 @@ mod tests {
     }
 
     #[test]
-    fn mob_ability_descriptions_cover_plain_and_special_mobs() {
-        let rat = mobs::by_name("rat").expect("rat template");
-        let shaman = mobs::by_name("gnoll shaman").expect("shaman template");
+    fn apply_discoveries_only_reports_new_entries() {
+        let mut profile = CodexProfile::default();
+        let mut discoveries = VisibleDiscoveries::default();
+        discoveries.mobs.insert("rat".to_string());
 
-        assert_eq!(describe_mob_abilities(rat), "none");
-        assert!(describe_mob_abilities(shaman).contains("self-heals 6 hp"));
+        assert!(apply_discoveries(&mut profile, discoveries));
+
+        let mut repeated = VisibleDiscoveries::default();
+        repeated.mobs.insert("rat".to_string());
+        assert!(!apply_discoveries(&mut profile, repeated));
     }
 
     #[test]
-    fn item_function_descriptions_cover_multiple_item_types() {
-        let potion = items::TEMPLATES
-            .iter()
-            .find(|template| template.name == "potion of healing")
-            .expect("potion template");
-        let weapon = items::TEMPLATES
-            .iter()
-            .find(|template| template.name == "short sword")
-            .expect("weapon template");
-        let wand = items::TEMPLATES
-            .iter()
-            .find(|template| template.name == "wand of fire")
-            .expect("wand template");
-        let identify = items::TEMPLATES
-            .iter()
-            .find(|template| template.name == "scroll of mapping")
-            .expect("mapping template");
+    fn page_lengths_match_templates() {
+        assert_eq!(page_len(BookPage::Mob), mobs::TEMPLATES.len());
+        assert_eq!(page_len(BookPage::Item), items::TEMPLATES.len());
+    }
 
-        assert!(describe_item_function(potion).contains("restore up to 8 HP"));
-        assert!(describe_item_function(weapon).contains("+2 attack"));
-        assert!(describe_item_function(wand).contains("6-10 damage"));
-        assert!(describe_item_function(identify).contains("reveal the whole level"));
-        assert_eq!(item_range(wand), "nearest mob");
-        assert_eq!(item_duration(wand), "instant");
+    #[test]
+    fn canonical_item_names_match_templates() {
+        let sample = ItemTemplate {
+            name: "debug ration",
+            glyph: '%',
+            fg: Color::White,
+            kind: items::TEMPLATES[0].kind,
+            min_depth: 1,
+        };
+        assert_eq!(canonical_item_name(sample.name), None);
         assert_eq!(
-            describe_item_function(&ItemTemplate {
-                name: "scroll of identify",
-                glyph: '?',
-                fg: Color::White,
-                kind: ItemKind::Scroll(ScrollKind::Identify),
-                min_depth: 1,
-            }),
-            "Read for no effect right now."
+            canonical_item_name(items::TEMPLATES[0].name),
+            Some(items::TEMPLATES[0].name.to_string())
         );
     }
 }

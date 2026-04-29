@@ -75,6 +75,36 @@ impl Map {
             .map(move |(i, t)| ((i as i32) % w, (i as i32) / w, t))
     }
 
+    pub fn line_of_sight(&self, mut x0: i32, mut y0: i32, x1: i32, y1: i32) -> bool {
+        let dx = (x1 - x0).abs();
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let dy = -(y1 - y0).abs();
+        let sy = if y0 < y1 { 1 } else { -1 };
+        let mut err = dx + dy;
+
+        loop {
+            let e2 = 2 * err;
+            if e2 >= dy {
+                err += dy;
+                x0 += sx;
+            }
+            if e2 <= dx {
+                err += dx;
+                y0 += sy;
+            }
+            if let Some(tile) = self.tile(x0, y0) {
+                if (x0, y0) != (x1, y1) && tile.blocks_sight() {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+            if x0 == x1 && y0 == y1 {
+                return true;
+            }
+        }
+    }
+
     /// Build a hard-coded test arena: outer wall, central pillars, gap in
     /// the south wall to confirm wall behaviour.
     #[allow(dead_code)]
@@ -124,5 +154,28 @@ mod tests {
         let map = Map::test_arena(20, 10);
         assert!(map.is_blocked(-1, 5));
         assert!(map.is_blocked(20, 5));
+    }
+
+    #[test]
+    fn walls_block_line_of_sight() {
+        let mut map = Map::new(20, 7);
+        for y in 0..map.height() {
+            for x in 0..map.width() {
+                map.set(x, y, Tile::Floor);
+            }
+        }
+        map.set(6, 3, Tile::Wall);
+        assert!(!map.line_of_sight(3, 3, 10, 3));
+    }
+
+    #[test]
+    fn open_tiles_allow_line_of_sight() {
+        let mut map = Map::new(20, 7);
+        for y in 0..map.height() {
+            for x in 0..map.width() {
+                map.set(x, y, Tile::Floor);
+            }
+        }
+        assert!(map.line_of_sight(3, 3, 10, 3));
     }
 }
