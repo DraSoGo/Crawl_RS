@@ -15,12 +15,80 @@ shell to a 4K terminal.
 
 ## Install
 
-```
-cargo install --path .
+Repository: <https://github.com/drasogun/crawl-rs>
+Latest release: <https://github.com/drasogun/crawl-rs/releases/latest>
+
+### Option A — pre-built binaries (no Rust required)
+
+Each tagged release on GitHub attaches archives for the three supported
+targets. Download the one that matches your platform from the
+[releases page](https://github.com/drasogun/crawl-rs/releases/latest),
+extract, and run the binary.
+
+#### Linux (x86_64)
+
+```sh
+curl -L -o crawl-rs.tar.gz \
+  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-x86_64-unknown-linux-gnu.tar.gz
+tar xzf crawl-rs.tar.gz
+sudo mv crawl-rs-*/crawl-rs /usr/local/bin/
+crawl-rs
 ```
 
-Pre-built binaries (linux-x64, macos-arm64, windows-x64) attach to each
-GitHub release.
+#### macOS (Apple Silicon, arm64)
+
+```sh
+curl -L -o crawl-rs.tar.gz \
+  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-aarch64-apple-darwin.tar.gz
+tar xzf crawl-rs.tar.gz
+sudo mv crawl-rs-*/crawl-rs /usr/local/bin/
+xattr -d com.apple.quarantine /usr/local/bin/crawl-rs   # only needed once
+crawl-rs
+```
+
+#### Windows (x86_64)
+
+PowerShell:
+
+```powershell
+Invoke-WebRequest `
+  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-x86_64-pc-windows-msvc.zip `
+  -OutFile crawl-rs.zip
+Expand-Archive crawl-rs.zip -DestinationPath .
+.\crawl-rs-*\crawl-rs.exe
+```
+
+Move `crawl-rs.exe` somewhere on your `PATH` (e.g. `%USERPROFILE%\bin`) to
+launch it from any directory.
+
+### Option B — build from source
+
+Requires Rust 1.75 or newer. Get it from <https://rustup.rs>.
+
+```sh
+git clone https://github.com/drasogun/crawl-rs.git
+cd crawl-rs
+cargo install --path crawl-rs
+```
+
+The binary lands in `~/.cargo/bin/crawl-rs` (Linux/macOS) or
+`%USERPROFILE%\.cargo\bin\crawl-rs.exe` (Windows). Add that directory to
+your `PATH` if it isn't already:
+
+| Shell | One-liner |
+|-------|-----------|
+| bash  | `echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc && exec bash` |
+| zsh   | `echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc && exec zsh` |
+| fish  | `fish_add_path $HOME/.cargo/bin` |
+| PowerShell | `[Environment]::SetEnvironmentVariable('Path', $env:Path + ';' + "$env:USERPROFILE\.cargo\bin", 'User')` |
+
+### Option C — run without installing
+
+```sh
+git clone https://github.com/drasogun/crawl-rs.git
+cd crawl-rs/crawl-rs
+cargo run --release
+```
 
 ## Run
 
@@ -48,10 +116,11 @@ crawl-rs --dump --count 5 --seed 1
 `ctrl-c`) to avoid clobbering a movement key. On the title screen and the
 death/victory screens, `q` still works as quit.
 
-In the inventory screen, press `a` … `z` to use or equip the item in that
-slot. Use a potion of healing for HP, a scroll of mapping to reveal the
-level, a scroll of teleport to fling yourself, or wear armor / wield weapons
-for permanent stat bonuses.
+In the inventory screen, the up/down arrows (or `w` / `s`) move the cursor
+and `f` (or `enter`) uses or equips the highlighted slot. Use a potion of
+healing for HP, a scroll of mapping to reveal the level, a scroll of
+teleport to fling yourself, or wear armor / wield weapons for permanent
+stat bonuses. `esc` or `i` closes the screen without spending a turn.
 
 ## How it works
 

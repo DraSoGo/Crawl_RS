@@ -58,11 +58,17 @@ pub fn build_level(
     dungeon.map
 }
 
-/// Despawn everything except the player.
+/// Despawn every on-map non-player entity (mobs, ground items, the amulet).
+///
+/// Items carried in the player's `Inventory` lack a `Position` after pickup,
+/// so filtering on `Position` keeps them alive across level transitions —
+/// otherwise the inventory would hold dangling `Entity` references that
+/// render as "?" in the inventory menu.
 pub fn purge_non_player(world: &mut World) {
     let to_remove: Vec<Entity> = world
+        .query::<&Position>()
         .iter()
-        .map(|e| e.entity())
+        .map(|(entity, _)| entity)
         .filter(|entity| world.get::<&Player>(*entity).is_err())
         .collect();
     for entity in to_remove {
@@ -99,8 +105,8 @@ fn place_player(world: &mut World, dungeon: &Dungeon) {
 }
 
 fn spawn_mobs(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64Mcg) {
-    // Density scales with depth: 0..=2 at d=1 → 1..=4 at d=10.
-    let upper = 2 + (depth as i32) / 3;
+    // Density scales aggressively: ~3..=8 at d=1, ~7..=12 at d=10.
+    let upper = 3 + (depth as i32);
     for room in dungeon.rooms.iter().skip(1) {
         let count = rng.gen_range(0..=upper);
         for _ in 0..count {
@@ -116,8 +122,8 @@ fn spawn_mobs(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64M
 }
 
 fn spawn_mob(world: &mut World, t: &MobTemplate, x: i32, y: i32, depth: u32) {
-    // +10% HP/atk per depth level.
-    let scale = 1.0 + 0.1 * ((depth as f32) - 1.0).max(0.0);
+    // +25% HP/atk per depth level — by depth 10 mobs are ~3.25× tier-1 stats.
+    let scale = 1.0 + 0.25 * ((depth as f32) - 1.0).max(0.0);
     let max_hp = ((t.max_hp as f32) * scale).ceil() as i32;
     let attack = ((t.attack as f32) * scale).round() as i32;
     world.spawn((
@@ -134,8 +140,8 @@ fn spawn_mob(world: &mut World, t: &MobTemplate, x: i32, y: i32, depth: u32) {
 
 fn spawn_items(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64Mcg) {
     for room in dungeon.rooms.iter() {
-        let chance = 0.5 + 0.03 * (depth as f64);
-        if !rng.gen_bool(chance.clamp(0.0, 0.95)) {
+        let chance = 0.7 + 0.06 * (depth as f64);
+        if !rng.gen_bool(chance.clamp(0.0, 0.98)) {
             continue;
         }
         let template = match items::pick_for_depth(depth, rng) {

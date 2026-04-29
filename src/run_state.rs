@@ -47,6 +47,9 @@ pub struct RunState {
     pub rng: Pcg64Mcg,
     pub mode: UiMode,
     pub finalized: bool,
+    /// Highlighted slot in the inventory screen. Persisted across opens so
+    /// the cursor lands where it was last left.
+    pub inventory_cursor: usize,
 }
 
 pub fn level_dims(buffer: &Buffer) -> (i32, i32) {
@@ -70,6 +73,7 @@ pub fn start_new_run(seed: u64, buffer: &Buffer) -> RunState {
         rng: Pcg64Mcg::seed_from_u64(seed ^ 0xA17E_CAFE_F00D_BEEF),
         mode: UiMode::Playing,
         finalized: false,
+        inventory_cursor: 0,
     };
     fov_sys::update(&mut state.world, &state.map);
     state
@@ -221,6 +225,14 @@ pub fn player_hp(world: &World) -> Option<(i32, i32)> {
         .query::<(&Player, &Stats)>()
         .iter()
         .map(|(_, (_, s))| (s.hp, s.max_hp))
+        .next()
+}
+
+pub fn player_combat(world: &World) -> Option<(i32, i32)> {
+    world
+        .query::<(&Player, &Stats)>()
+        .iter()
+        .map(|(_, (_, s))| (s.attack, s.defense))
         .next()
 }
 

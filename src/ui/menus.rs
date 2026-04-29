@@ -8,7 +8,7 @@ use crate::ecs::components::{
 };
 use crate::ui::Buffer;
 
-pub fn draw_inventory(world: &World, buffer: &mut Buffer) {
+pub fn draw_inventory(world: &World, buffer: &mut Buffer, cursor: usize) {
     if buffer.height() == 0 || buffer.width() == 0 {
         return;
     }
@@ -23,7 +23,7 @@ pub fn draw_inventory(world: &World, buffer: &mut Buffer) {
         Some(p) => p,
         None => return,
     };
-    let lines = build_lines(world, player);
+    let lines = build_lines(world, player, cursor);
     let start_y = (buffer.height() as usize)
         .saturating_sub(lines.len())
         / 2;
@@ -34,7 +34,7 @@ pub fn draw_inventory(world: &World, buffer: &mut Buffer) {
     }
 }
 
-fn build_lines(world: &World, player: Entity) -> Vec<(String, Color)> {
+fn build_lines(world: &World, player: Entity, cursor: usize) -> Vec<(String, Color)> {
     let mut out: Vec<(String, Color)> = Vec::new();
     out.push(("Inventory".to_string(), Color::Yellow));
     out.push((String::new(), Color::Reset));
@@ -50,7 +50,6 @@ fn build_lines(world: &World, player: Entity) -> Vec<(String, Color)> {
         out.push(("  (empty)".to_string(), Color::DarkGrey));
     }
     for (idx, entity) in inv.items.iter().enumerate() {
-        let letter = (b'a' + idx as u8) as char;
         let name = world
             .get::<&Name>(*entity)
             .map(|n| n.0.clone())
@@ -59,11 +58,13 @@ fn build_lines(world: &World, player: Entity) -> Vec<(String, Color)> {
         let equipped = matches!(equipment.weapon, Some(w) if w == *entity)
             || matches!(equipment.armor, Some(a) if a == *entity);
         let mark = if equipped { " [E]" } else { "" };
-        out.push((format!("  {letter}) {name}{mark} {descriptor}"), Color::White));
+        let prefix = if idx == cursor { ">" } else { " " };
+        let color = if idx == cursor { Color::Cyan } else { Color::White };
+        out.push((format!("  {prefix} {name}{mark} {descriptor}"), color));
     }
     out.push((String::new(), Color::Reset));
     out.push((
-        "  press a-z to use/equip   esc/i to close".to_string(),
+        "  up/down select   f use/equip   esc/i close".to_string(),
         Color::DarkGrey,
     ));
     out

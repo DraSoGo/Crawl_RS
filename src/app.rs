@@ -167,6 +167,7 @@ fn apply_menu_choice(
                     ),
                     mode: UiMode::Playing,
                     finalized: false,
+                    inventory_cursor: 0,
                 };
                 fov_sys::update(&mut state.world, &state.map);
                 state.log.info("you continue your descent.");
@@ -246,10 +247,29 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
     if key.kind != KeyEventKind::Press {
         return None;
     }
+    let inv_len = inventory_len(&state.world);
+    if state.inventory_cursor >= inv_len {
+        state.inventory_cursor = inv_len.saturating_sub(1);
+    }
     match key.code {
         KeyCode::Esc | KeyCode::Char('i') => Some(true),
-        KeyCode::Char(c) if c.is_ascii_lowercase() => {
-            let index = (c as u8 - b'a') as usize;
+        KeyCode::Up | KeyCode::Char('w') => {
+            if inv_len > 0 {
+                state.inventory_cursor = (state.inventory_cursor + inv_len - 1) % inv_len;
+            }
+            Some(false)
+        }
+        KeyCode::Down | KeyCode::Char('s') => {
+            if inv_len > 0 {
+                state.inventory_cursor = (state.inventory_cursor + 1) % inv_len;
+            }
+            Some(false)
+        }
+        KeyCode::Char('f') | KeyCode::Enter => {
+            if inv_len == 0 {
+                return Some(false);
+            }
+            let index = state.inventory_cursor;
             let used = inventory_sys::use_index(
                 &mut state.world,
                 &mut state.map,
@@ -258,6 +278,10 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
                 index,
             );
             if used {
+                let new_len = inventory_len(&state.world);
+                if state.inventory_cursor >= new_len {
+                    state.inventory_cursor = new_len.saturating_sub(1);
+                }
                 fov_sys::update(&mut state.world, &state.map);
                 turn::spend_player_energy(&mut state.world);
                 turn::run_npcs_until_player_turn(
@@ -279,4 +303,14 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
         }
         _ => None,
     }
+}
+
+fn inventory_len(world: &hecs::World) -> usize {
+    use crate::ecs::components::{Inventory, Player};
+    world
+        .query::<(&Player, &Inventory)>()
+        .iter()
+        .map(|(_, (_, inv))| inv.items.len())
+        .next()
+        .unwrap_or(0)
 }

@@ -6,14 +6,17 @@ use hecs::World;
 
 use crate::ecs::systems::render::{draw_entities, draw_map, player_fov};
 use crate::run_state::{
-    player_hp, player_kills, player_xp, RunState, UiMode, HUD_ROWS, LOG_ROWS, RESERVED_ROWS,
+    player_combat, player_hp, player_kills, player_xp, RunState, UiMode, HUD_ROWS,
+    LOG_ROWS, RESERVED_ROWS,
 };
 use crate::ui::{menus, Buffer, MessageLog, Severity};
 
 pub fn draw_run(buffer: &mut Buffer, state: &RunState) {
     match state.mode {
         UiMode::Playing => draw_world(buffer, state),
-        UiMode::Inventory => menus::draw_inventory(&state.world, buffer),
+        UiMode::Inventory => {
+            menus::draw_inventory(&state.world, buffer, state.inventory_cursor)
+        }
         UiMode::GameOver => draw_death_screen(buffer, state),
         UiMode::Victory => draw_victory_screen(buffer, state),
     }
@@ -50,9 +53,10 @@ fn draw_hud(buffer: &mut Buffer, state: &RunState) {
     }
     let y = buffer.height().saturating_sub(1);
     let (hp, max_hp) = player_hp(&state.world).unwrap_or((0, 0));
+    let (atk, def) = player_combat(&state.world).unwrap_or((0, 0));
     let xp = player_xp(&state.world).unwrap_or(0);
     let line = format!(
-        "depth {}  hp {hp}/{max_hp}  xp {xp}  seed {:016x}  wasd move  qezx diag  f pickup  i inv  > stairs  esc save+quit",
+        "depth {}  hp {hp}/{max_hp}  atk {atk}  def {def}  xp {xp}  seed {:016x}  wasd qezx . f i > esc",
         state.depth, state.seed
     );
     let truncated = truncate_to_width(&line, buffer.width() as usize);

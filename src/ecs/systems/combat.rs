@@ -43,10 +43,9 @@ fn roll_damage<R: Rng>(world: &World, attacker: Entity, target: Entity, rng: &mu
         .ok()
         .map(|s| s.defense)
         .unwrap_or(0);
-    // d4-flavoured roll keeps damage variable enough that combat doesn't
-    // collapse to a deterministic exchange while still preserving meaningful
-    // attack/defense differences.
-    let raw = rng.gen_range(1..=4) + attack;
+    // d6 roll: bigger swing than d4 so combat feels punchy and stat changes
+    // (equipping weapons, scaling) read clearly in the message log.
+    let raw = rng.gen_range(1..=6) + attack;
     (raw - defense).max(1)
 }
 
