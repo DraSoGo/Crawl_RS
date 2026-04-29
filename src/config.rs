@@ -51,7 +51,7 @@ pub const UI: UiConfig = UiConfig {
 pub const PLAYER: PlayerConfig = PlayerConfig {
     fov_radius: 8,
     base_hp: 20,
-    base_attack: 4,
+    base_attack: 0,
     base_defense: 1,
     base_move: 1,
     descent_heal: 5,

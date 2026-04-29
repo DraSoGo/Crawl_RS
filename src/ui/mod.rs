@@ -1,5 +1,6 @@
 pub mod book;
 pub mod buffer;
+pub mod help;
 pub mod menus;
 pub mod messages;
 pub mod status;
