@@ -133,7 +133,7 @@ pub fn sell_value(kind: ItemKind) -> i32 {
             | PotionEffect::BuffVision { .. } => 5,
             PotionEffect::CurePoison => 4,
         },
-        ItemKind::Scroll(g) => match g {
+        ItemKind::Scroll(s) => match s {
             ScrollKind::Mapping | ScrollKind::Identify | ScrollKind::Light => 2,
             ScrollKind::Teleport | ScrollKind::Recall => 4,
             ScrollKind::MagicMissile => 3,

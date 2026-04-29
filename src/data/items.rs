@@ -100,14 +100,14 @@ pub const TEMPLATES: &[ItemTemplate] = &[
         min_depth: 2,
         weight: 8,
     },
-    ItemTemplate {
-        name: "scroll of identify",
-        glyph: '?',
-        fg: Color::White,
-        kind: ItemKind::Scroll(ScrollKind::Identify),
-        min_depth: 1,
-        weight: 6,
-    },
+    // ItemTemplate {
+    //     name: "scroll of identify",
+    //     glyph: '?',
+    //     fg: Color::White,
+    //     kind: ItemKind::Scroll(ScrollKind::Identify),
+    //     min_depth: 1,
+    //     weight: 6,
+    // },
     ItemTemplate {
         name: "scroll of magic missile",
         glyph: '?',
@@ -363,14 +363,14 @@ pub const TEMPLATES: &[ItemTemplate] = &[
         weight: 4,
     },
     // ---- Food ----------------------------------------------------------
-    ItemTemplate {
-        name: "food ration",
-        glyph: '%',
-        fg: Color::DarkYellow,
-        kind: ItemKind::Food { nutrition: 400, poisonous: false },
-        min_depth: 1,
-        weight: 12,
-    },
+    // ItemTemplate {
+    //     name: "food ration",
+    //     glyph: '%',
+    //     fg: Color::DarkYellow,
+    //     kind: ItemKind::Food { nutrition: 400, poisonous: false },
+    //     min_depth: 1,
+    //     weight: 12,
+    // },
 ];
 
 /// Pick a template appropriate for the supplied dungeon depth via weighted

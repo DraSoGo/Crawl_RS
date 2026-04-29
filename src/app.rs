@@ -265,7 +265,7 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
             }
             Some(false)
         }
-        KeyCode::Char('s') => {
+        KeyCode::Char('g') => {
             if inv_len == 0 {
                 return Some(false);
             }
