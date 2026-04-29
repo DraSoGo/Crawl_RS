@@ -106,9 +106,6 @@ fn describe_potion(p: PotionEffect) -> String {
         PotionEffect::GreaterHeal(n) => format!("(+{n} hp)"),
         PotionEffect::FullHeal => "(full hp)".to_string(),
         PotionEffect::MaxHpUp(n) => format!("(+{n} max hp)"),
-        PotionEffect::BuffSpeed { amount, turns } => {
-            format!("(+{amount} speed for {turns} turns)")
-        }
         PotionEffect::BuffAttack { amount, turns } => {
             format!("(+{amount} atk for {turns} turns)")
         }

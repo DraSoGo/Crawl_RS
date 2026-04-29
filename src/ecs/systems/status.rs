@@ -1,12 +1,12 @@
 //! Per-tick processing of `StatusEffects`, `Regen`, `HungerClock`, and
-//! `Summoner`. Called once per scheduler iteration before NPC actions.
+//! `Summoner`. Called once per round before NPC actions.
 
 use hecs::{Entity, World};
 use rand::Rng;
 
 use crate::ecs::components::{
-    Ai, BlocksTile, Dead, Energy, Faction, FieldOfView, HungerClock, HungerState, Mob,
-    Name, Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
+    Ai, BlocksTile, Dead, Faction, FieldOfView, HungerClock, HungerState, Mob, Name,
+    Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
 };
 use crate::ui::{MessageLog, Severity};
 
@@ -70,19 +70,7 @@ fn tick_status_effects(world: &mut World, log: &mut MessageLog) {
             next.fear_turns -= 1;
         }
 
-        // Buffs: when timer hits zero, undo amount on Stats.
-        if next.speed_buff_turns > 0 {
-            next.speed_buff_turns -= 1;
-            if next.speed_buff_turns == 0 && next.speed_buff > 0 {
-                if let Ok(mut s) = world.get::<&mut Stats>(entity) {
-                    s.speed -= next.speed_buff;
-                }
-                next.speed_buff = 0;
-                if is_player {
-                    log.status("the speed buff fades.");
-                }
-            }
-        }
+        // Buffs: when timer hits zero, undo amount on Stats/FOV.
         if next.attack_buff_turns > 0 {
             next.attack_buff_turns -= 1;
             if next.attack_buff_turns == 0 && next.attack_buff > 0 {
@@ -238,8 +226,12 @@ fn spawn_summoned_skeleton(world: &mut World, x: i32, y: i32) {
         ),
         Mob,
         BlocksTile,
-        Stats::new(template.max_hp, template.attack, template.defense, template.speed),
-        Energy::new(0),
+        Stats::new(
+            template.max_hp,
+            template.attack,
+            template.defense,
+            template.move_tiles,
+        ),
         Ai::hostile(template.sight),
         Faction::Hostile,
         StatusEffects::default(),

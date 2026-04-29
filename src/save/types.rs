@@ -4,14 +4,14 @@
 use serde::{Deserialize, Serialize};
 
 use crate::ecs::components::{
-    Ai, Energy, HungerClock, ItemKind, Position, Progression, Stats, StatusEffects,
+    Ai, HungerClock, ItemKind, Position, Progression, Stats, StatusEffects,
 };
 use crate::map::Map;
 use crate::ui::messages::Severity;
 
-/// Bumped every time the snapshot schema changes incompatibly. v3 adds the
-/// `level` field on `Progression` for the level-up system.
-pub const SAVE_VERSION: u32 = 3;
+/// Bumped every time the snapshot schema changes incompatibly. v4 removes the
+/// energy scheduler and stores move-based stats instead.
+pub const SAVE_VERSION: u32 = 4;
 pub const SAVE_FILENAME: &str = "save.bin";
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -31,7 +31,6 @@ pub struct SaveSnapshot {
 pub struct PlayerSnapshot {
     pub pos: Position,
     pub stats: Stats,
-    pub energy: Energy,
     pub progression: Progression,
     pub fov_radius: i32,
     pub fov_revealed: Vec<bool>,
@@ -52,7 +51,6 @@ pub struct PlayerSnapshot {
 pub struct MobSnapshot {
     pub pos: Position,
     pub stats: Stats,
-    pub energy: Energy,
     pub ai: Ai,
     pub name: String,
     pub glyph: char,

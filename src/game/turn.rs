@@ -1,107 +1,58 @@
-//! Energy-accumulator turn scheduler.
+//! One-round enemy turn runner.
 //!
-//! Each scheduler tick adds `Stats::speed` to every entity's `Energy`. An
-//! entity acts when its energy reaches `TURN_THRESHOLD`, then pays that
-//! threshold back. `run_npcs_until_player_turn` ticks until the player is
-//! ready to act, running each NPC's turn in between.
+//! Each player action advances the game by one round. During that round, mobs
+//! tick status effects, plan up to `Stats::move_tiles` movement steps, then all
+//! queued attacks resolve simultaneously in a single combat phase.
 
 use hecs::{Entity, World};
 use rand::Rng;
 
-use crate::ecs::components::{Ai, Energy, Mob, Player, Stats};
-use crate::ecs::systems::{ai, combat, fov as fov_sys, movement, status};
+use crate::ecs::components::{Mob, Stats, WantsToAttack};
+use crate::ecs::systems::{ai, combat, movement, status};
 use crate::map::Map;
 use crate::ui::MessageLog;
 
-pub const TURN_THRESHOLD: i32 = 100;
-
-const MAX_ITERS: u32 = 1024;
-
-pub fn run_npcs_until_player_turn<R: Rng>(
+pub fn run_enemy_turn<R: Rng>(
     world: &mut World,
     map: &Map,
     log: &mut MessageLog,
     rng: &mut R,
 ) {
-    for _ in 0..MAX_ITERS {
-        if combat::player_dead(world) {
-            return;
-        }
-        if player_ready(world) {
-            return;
-        }
-        status::tick(world, log, rng);
-        if combat::player_dead(world) {
-            return;
-        }
-        tick_energy(world);
-        let ready = collect_ready_mobs(world);
-        for entity in ready {
-            if !world.contains(entity) {
+    if combat::player_dead(world) {
+        return;
+    }
+    status::tick(world, log, rng);
+    if combat::player_dead(world) {
+        return;
+    }
+
+    let max_move = world
+        .query::<(&Mob, &Stats)>()
+        .iter()
+        .map(|(_, (_, stats))| stats.move_tiles.max(0))
+        .max()
+        .unwrap_or(0);
+
+    for step in 0..max_move {
+        let actors = collect_mobs_for_step(world, step);
+        for entity in actors {
+            if !world.contains(entity) || world.get::<&WantsToAttack>(entity).is_ok() {
                 continue;
             }
             ai::plan(world, map, rng, entity);
-            movement::apply(world, map);
-            combat::resolve(world, log, rng);
-            combat::reap(world);
-            spend_energy(world, entity);
-            if combat::player_dead(world) {
-                return;
-            }
         }
-        fov_sys::update(world, map);
+        movement::apply(world, map);
     }
+
+    combat::resolve(world, log, rng);
+    combat::reap(world);
 }
 
-pub fn spend_player_energy(world: &mut World) {
-    let mut player_entity = None;
-    for (e, _) in world.query::<&Player>().iter() {
-        player_entity = Some(e);
-        break;
-    }
-    if let Some(entity) = player_entity {
-        spend_energy(world, entity);
-    }
-}
-
-fn player_ready(world: &World) -> bool {
-    for (_, (_, energy)) in world.query::<(&Player, &Energy)>().iter() {
-        return energy.value >= TURN_THRESHOLD;
-    }
-    true
-}
-
-fn tick_energy(world: &mut World) {
-    let updates: Vec<(Entity, i32)> = world
-        .query::<(&Stats, &Energy)>()
-        .iter()
-        .map(|(e, (stats, _))| (e, stats.speed.max(1)))
-        .collect();
-    for (entity, gain) in updates {
-        if let Ok(mut energy) = world.get::<&mut Energy>(entity) {
-            energy.value = energy.value.saturating_add(gain);
-        }
-    }
-}
-
-fn collect_ready_mobs(world: &World) -> Vec<Entity> {
+fn collect_mobs_for_step(world: &World, step: i32) -> Vec<Entity> {
     world
-        .query::<(&Mob, &Energy, &Ai)>()
+        .query::<(&Mob, &Stats)>()
         .iter()
-        .filter(|(_, (_, energy, _))| energy.value >= TURN_THRESHOLD)
+        .filter(|(_, (_, stats))| stats.move_tiles > step)
         .map(|(entity, _)| entity)
         .collect()
-}
-
-fn spend_energy(world: &mut World, entity: Entity) {
-    if let Ok(mut energy) = world.get::<&mut Energy>(entity) {
-        // Drain at least one threshold's worth, and cap remainder at 0.
-        // Without the cap, fast mobs (speed > player speed) accumulate
-        // surplus energy and act multiple times within a single player
-        // turn, which feels chaotic and erodes the "1–2 tiles per turn"
-        // movement budget. A capped drain still preserves slow-mob skips
-        // (a speed-6 mob will fail to reach the threshold every other
-        // round vs a speed-10 player).
-        energy.value = (energy.value - TURN_THRESHOLD).min(0);
-    }
 }

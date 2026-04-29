@@ -14,7 +14,9 @@
 //! - `term`       — raw-mode RAII guard + panic-safe terminal restore.
 
 mod app;
+mod book;
 mod cli;
+mod codex;
 mod data;
 mod draw;
 mod ecs;

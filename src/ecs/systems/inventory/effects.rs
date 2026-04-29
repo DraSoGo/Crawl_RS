@@ -4,8 +4,8 @@ use hecs::{Entity, World};
 use rand::Rng;
 
 use crate::ecs::components::{
-    Ai, BlocksTile, Energy, Equipment, Faction, FieldOfView, Item, ItemKind, Mob, Name,
-    Position, PotionEffect, Renderable, ScrollKind, Stats, StatusEffects,
+    Ai, BlocksTile, Equipment, Faction, FieldOfView, Item, ItemKind, Mob, Name, Position,
+    PotionEffect, Renderable, ScrollKind, Stats, StatusEffects,
 };
 use crate::ecs::systems::inventory::consume::zap_nearest;
 use crate::map::{Map, Tile};
@@ -38,12 +38,6 @@ pub fn apply_potion(
                 s.hp += n;
                 log.status(format!("you quaff the {item_name} (max hp +{n})."));
             }
-        }
-        PotionEffect::BuffSpeed { amount, turns } => {
-            apply_buff_speed(world, target, amount, turns);
-            log.status(format!(
-                "you quaff the {item_name} (+{amount} speed for {turns})."
-            ));
         }
         PotionEffect::BuffAttack { amount, turns } => {
             apply_buff_attack(world, target, amount, turns);
@@ -81,16 +75,6 @@ fn heal(
             "you quaff the {item_name} (+{} hp).",
             s.hp - before
         ));
-    }
-}
-
-fn apply_buff_speed(world: &mut World, target: Entity, amount: i32, turns: i32) {
-    if let Ok(mut s) = world.get::<&mut StatusEffects>(target) {
-        s.speed_buff = s.speed_buff.max(amount);
-        s.speed_buff_turns = s.speed_buff_turns.max(turns);
-    }
-    if let Ok(mut stats) = world.get::<&mut Stats>(target) {
-        stats.speed += amount;
     }
 }
 
@@ -274,8 +258,12 @@ fn summon_allies<R: Rng>(world: &mut World, log: &mut MessageLog, rng: &mut R, p
             Renderable::new(template.glyph, template.fg, crossterm::style::Color::Reset, 100),
             Mob,
             BlocksTile,
-            Stats::new(template.max_hp, template.attack, template.defense, template.speed),
-            Energy::new(0),
+            Stats::new(
+                template.max_hp,
+                template.attack,
+                template.defense,
+                template.move_tiles,
+            ),
             Ai::hostile(template.sight),
             Faction::PlayerAlly,
             StatusEffects::default(),
@@ -307,4 +295,3 @@ fn recall_to_up_stair(
     }
     log.info("nothing happens.");
 }
-

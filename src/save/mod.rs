@@ -8,6 +8,7 @@
 //! Permadeath: callers must `delete()` the file the moment the player dies.
 
 pub mod build;
+pub mod codex;
 pub mod io;
 pub mod restore;
 pub mod scores;
@@ -23,9 +24,9 @@ pub use types::SaveSnapshot;
 mod tests {
     use super::*;
     use crate::ecs::components::{
-        Ai, BlocksTile, Energy, Equipment, Faction, FieldOfView, HungerClock, Inventory,
-        Item, ItemKind, Mob, Name, Player, Position, PotionEffect, Progression,
-        Renderable, Stats, StatusEffects,
+        Ai, BlocksTile, Equipment, Faction, FieldOfView, HungerClock, Inventory, Item,
+        ItemKind, Mob, Name, Player, Position, PotionEffect, Progression, Renderable,
+        Stats, StatusEffects,
     };
     use crate::map::Map;
     use crate::ui::messages::MessageLog;
@@ -44,8 +45,7 @@ mod tests {
             ),
             Player,
             BlocksTile,
-            Stats::new(20, 4, 1, 10),
-            Energy::new(100),
+            Stats::new(20, 4, 1, 1),
             Progression { xp: 17, level: 2, kills: 3 },
             Inventory::default(),
             Equipment::default(),
@@ -64,8 +64,7 @@ mod tests {
             ),
             Mob,
             BlocksTile,
-            Stats::new(4, 1, 0, 12),
-            Energy::new(50),
+            Stats::new(4, 1, 0, 1),
             Ai::hostile(6),
             Faction::Hostile,
             StatusEffects::default(),

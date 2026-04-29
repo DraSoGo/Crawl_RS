@@ -15,6 +15,8 @@ pub enum PlayerAction {
     Quit,
     /// Open the inventory screen — does not consume a turn.
     OpenInventory,
+    /// Open the feature book — does not consume a turn.
+    OpenBook,
     /// Descend a flight of stairs.
     Descend,
     /// Key was not bound to anything; no turn elapsed.
@@ -45,6 +47,7 @@ pub fn handle_key(world: &mut World, key: KeyEvent) -> PlayerAction {
         KeyCode::Char('.') => PlayerAction::Took,
         KeyCode::Char('f') | KeyCode::Char(',') => queue_pickup(world),
         KeyCode::Char('i') => PlayerAction::OpenInventory,
+        KeyCode::Char('b') => PlayerAction::OpenBook,
         KeyCode::Char('>') => PlayerAction::Descend,
         _ => PlayerAction::None,
     }
@@ -70,4 +73,17 @@ fn queue_pickup(world: &mut World) -> PlayerAction {
 
 fn player_entity(world: &World) -> Option<hecs::Entity> {
     world.query::<&Player>().iter().next().map(|(e, _)| e)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crossterm::event::{KeyEvent, KeyModifiers};
+
+    #[test]
+    fn b_opens_the_book() {
+        let mut world = World::new();
+        let action = handle_key(&mut world, KeyEvent::new(KeyCode::Char('b'), KeyModifiers::NONE));
+        assert_eq!(action, PlayerAction::OpenBook);
+    }
 }

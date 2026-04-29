@@ -11,10 +11,9 @@ use rand_pcg::Pcg64Mcg;
 use crate::data::items::{self, ItemTemplate};
 use crate::data::mobs::{self, MobTemplate};
 use crate::ecs::components::{
-    Ai, Amulet, BlocksTile, CasterHeal, Energy, Faction, FieldOfView, Flying, Item, Mob,
-    Name, Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
+    Ai, Amulet, BlocksTile, CasterHeal, Faction, FieldOfView, Flying, Item, Mob, Name,
+    Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
 };
-use crate::game::turn::TURN_THRESHOLD;
 use crate::map::gen::{bsp_generate, BspConfig, Dungeon};
 use crate::map::Map;
 
@@ -98,26 +97,31 @@ fn place_player(world: &mut World, dungeon: &Dungeon) {
         .map(|f| f.radius)
         .unwrap_or(8);
     let _ = world.insert_one(entity, FieldOfView::new(radius, map_w, map_h));
-    // Refill energy so the player can act immediately on the new level.
-    if let Ok(mut e) = world.get::<&mut Energy>(entity) {
-        e.value = TURN_THRESHOLD;
-    }
 }
 
 fn spawn_mobs(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64Mcg) {
-    // Density scales aggressively: ~3..=8 at d=1, ~7..=12 at d=10.
-    let upper = 3 + (depth as i32);
-    for room in dungeon.rooms.iter().skip(1) {
-        let count = rng.gen_range(0..=upper);
-        for _ in 0..count {
-            let template = mobs::pick_for_depth(depth, rng);
-            let x = rng.gen_range(room.x..room.x + room.w);
-            let y = rng.gen_range(room.y..room.y + room.h);
-            if tile_has_blocker(world, x, y) {
-                continue;
-            }
-            spawn_mob(world, template, x, y, depth);
+    let rooms: Vec<_> = dungeon.rooms.iter().skip(1).copied().collect();
+    let rooms = if rooms.is_empty() {
+        dungeon.rooms.clone()
+    } else {
+        rooms
+    };
+    let mut budget = floor_difficulty_budget(depth);
+    let mut attempts = 0u32;
+    while budget > 0 && attempts < 256 {
+        attempts += 1;
+        let template = match mobs::pick_for_budget(depth, budget, rng) {
+            Some(template) => template,
+            None => break,
+        };
+        let room = rooms[rng.gen_range(0..rooms.len())];
+        let x = rng.gen_range(room.x..room.x + room.w);
+        let y = rng.gen_range(room.y..room.y + room.h);
+        if tile_has_blocker(world, x, y) {
+            continue;
         }
+        spawn_mob(world, template, x, y, depth);
+        budget = budget.saturating_sub(template.difficulty);
     }
 }
 
@@ -136,8 +140,7 @@ fn spawn_mob(world: &mut World, t: &MobTemplate, x: i32, y: i32, depth: u32) {
         Renderable::new(glyph, t.fg, crossterm::style::Color::Reset, MOB_LAYER),
         Mob,
         BlocksTile,
-        Stats::new(max_hp, attack.max(1), t.defense, t.speed),
-        Energy::new(0),
+        Stats::new(max_hp, attack.max(1), t.defense, t.move_tiles),
         Ai { kind: t.ai, sight_radius: t.sight },
         Faction::Hostile,
         StatusEffects::default(),
@@ -231,6 +234,10 @@ fn tile_has_item(world: &World, x: i32, y: i32) -> bool {
         .query::<(&Position, &Item)>()
         .iter()
         .any(|(_, (pos, _))| pos.x == x && pos.y == y)
+}
+
+fn floor_difficulty_budget(depth: u32) -> u32 {
+    10 + depth.saturating_mul(3)
 }
 
 #[cfg(test)]

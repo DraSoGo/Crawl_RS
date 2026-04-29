@@ -128,9 +128,7 @@ pub fn sell_value(kind: ItemKind) -> i32 {
             PotionEffect::Heal(_) => 3,
             PotionEffect::GreaterHeal(_) | PotionEffect::FullHeal => 8,
             PotionEffect::MaxHpUp(_) => 10,
-            PotionEffect::BuffSpeed { .. }
-            | PotionEffect::BuffAttack { .. }
-            | PotionEffect::BuffVision { .. } => 5,
+            PotionEffect::BuffAttack { .. } | PotionEffect::BuffVision { .. } => 5,
             PotionEffect::CurePoison => 4,
         },
         ItemKind::Scroll(s) => match s {

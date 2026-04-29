@@ -11,17 +11,17 @@ use crossterm::{
 use rand::SeedableRng;
 use rand_pcg::Pcg64Mcg;
 
+use crate::book;
 use crate::cli::CliOpts;
 use crate::draw::draw_run;
 use crate::ecs::systems::{
-    fov as fov_sys,
     input::{handle_key, PlayerAction},
     inventory as inventory_sys,
 };
 use crate::game::turn;
 use crate::run_state::{
-    advance_player_turn, save_or_finalize, save_run, start_new_run, try_descend, RunState,
-    UiMode,
+    advance_player_turn, load_codex_profile, save_or_finalize, save_run, start_new_run,
+    try_descend, update_visibility_and_codex, RunState, UiMode,
 };
 use crate::save;
 use crate::ui::title::{MenuChoice, MenuState};
@@ -168,8 +168,12 @@ fn apply_menu_choice(
                     mode: UiMode::Playing,
                     finalized: false,
                     inventory_cursor: 0,
+                    codex: load_codex_profile(),
+                    book_page: crate::codex::BookPage::Mob,
+                    book_mob_cursor: 0,
+                    book_item_cursor: 0,
                 };
-                fov_sys::update(&mut state.world, &state.map);
+                update_visibility_and_codex(&mut state);
                 state.log.info("you continue your descent.");
                 *screen = Screen::Run(state);
                 Some(MenuOutcome::Continue)
@@ -220,6 +224,16 @@ fn handle_run_key(
                 Ok(RunOutcome::None)
             }
         }
+        UiMode::Book => {
+            if let Some(closing) = book::handle_key(state, key) {
+                if closing && state.mode == UiMode::Book {
+                    state.mode = UiMode::Playing;
+                }
+                Ok(RunOutcome::Redraw)
+            } else {
+                Ok(RunOutcome::None)
+            }
+        }
         UiMode::Playing => match handle_key(&mut state.world, key) {
             PlayerAction::Quit => {
                 save_run(state);
@@ -227,6 +241,10 @@ fn handle_run_key(
             }
             PlayerAction::OpenInventory => {
                 state.mode = UiMode::Inventory;
+                Ok(RunOutcome::Redraw)
+            }
+            PlayerAction::OpenBook => {
+                state.mode = UiMode::Book;
                 Ok(RunOutcome::Redraw)
             }
             PlayerAction::Descend => {
@@ -276,9 +294,8 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
                 if state.inventory_cursor >= new_len {
                     state.inventory_cursor = new_len.saturating_sub(1);
                 }
-                fov_sys::update(&mut state.world, &state.map);
-                turn::spend_player_energy(&mut state.world);
-                turn::run_npcs_until_player_turn(
+                update_visibility_and_codex(state);
+                turn::run_enemy_turn(
                     &mut state.world,
                     &state.map,
                     &mut state.log,
@@ -288,7 +305,7 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
                     state.mode = UiMode::GameOver;
                     return Some(true);
                 }
-                fov_sys::update(&mut state.world, &state.map);
+                update_visibility_and_codex(state);
                 save_or_finalize(state);
             }
             Some(false)
@@ -310,9 +327,8 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
                 if state.inventory_cursor >= new_len {
                     state.inventory_cursor = new_len.saturating_sub(1);
                 }
-                fov_sys::update(&mut state.world, &state.map);
-                turn::spend_player_energy(&mut state.world);
-                turn::run_npcs_until_player_turn(
+                update_visibility_and_codex(state);
+                turn::run_enemy_turn(
                     &mut state.world,
                     &state.map,
                     &mut state.log,
@@ -322,7 +338,7 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
                     state.mode = UiMode::GameOver;
                     return Some(true);
                 }
-                fov_sys::update(&mut state.world, &state.map);
+                update_visibility_and_codex(state);
                 save_or_finalize(state);
                 Some(true)
             } else {

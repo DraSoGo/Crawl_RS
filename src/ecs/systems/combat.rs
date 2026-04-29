@@ -2,8 +2,10 @@
 //! to zero HP. Combat is deterministic given a seeded RNG: attack/defense
 //! values fold into a single die-roll plus a flat damage floor.
 //!
-//! On kill: the defender is tagged `Dead` (cleaned up by `reap`), and the
-//! attacker — if it is the player — gains XP based on the slain mob's worth.
+//! All queued attacks resolve simultaneously. Damage is rolled from the
+//! pre-hit world state, then applied together before kills are processed.
+
+use std::collections::{HashMap, HashSet};
 
 use hecs::{Entity, World};
 use rand::Rng;
@@ -20,16 +22,76 @@ pub fn resolve<R: Rng>(world: &mut World, log: &mut MessageLog, rng: &mut R) {
         .iter()
         .map(|(e, w)| (e, w.target))
         .collect();
-    for (attacker, target) in intents {
-        // Either party may have died earlier in the same scheduler step.
-        if !world.contains(attacker) || !world.contains(target) {
-            let _ = world.remove_one::<WantsToAttack>(attacker);
+
+    let mut attacks: Vec<ResolvedAttack> = Vec::new();
+    for (attacker, target) in &intents {
+        if !world.contains(*attacker) || !world.contains(*target) {
             continue;
         }
-        let damage = roll_damage(world, attacker, target, rng);
-        apply_damage(world, log, attacker, target, damage);
+        if world.get::<&Stats>(*attacker).is_err() || world.get::<&Stats>(*target).is_err() {
+            continue;
+        }
+        attacks.push(ResolvedAttack {
+            attacker: *attacker,
+            target: *target,
+            damage: roll_damage(world, *attacker, *target, rng),
+            attacker_name: name_of(world, *attacker),
+            target_name: name_of(world, *target),
+        });
+    }
+
+    for (attacker, _) in intents {
         let _ = world.remove_one::<WantsToAttack>(attacker);
     }
+
+    let mut damage_by_target: HashMap<Entity, i32> = HashMap::new();
+    for attack in &attacks {
+        *damage_by_target.entry(attack.target).or_default() += attack.damage;
+    }
+    for (target, total_damage) in damage_by_target {
+        if let Ok(mut stats) = world.get::<&mut Stats>(target) {
+            stats.hp -= total_damage;
+        }
+    }
+
+    for attack in &attacks {
+        let severity = if world.get::<&Player>(attack.target).is_ok() {
+            Severity::Danger
+        } else {
+            Severity::Combat
+        };
+        log.push(
+            format!(
+                "{} hits {} for {}.",
+                attack.attacker_name, attack.target_name, attack.damage
+            ),
+            severity,
+        );
+    }
+
+    for attack in &attacks {
+        apply_on_hit(world, log, attack.attacker, attack.target, &attack.target_name);
+    }
+
+    let mut killed: HashSet<Entity> = HashSet::new();
+    for attack in attacks {
+        let hp_after = world
+            .get::<&Stats>(attack.target)
+            .ok()
+            .map(|stats| stats.hp)
+            .unwrap_or(1);
+        if hp_after <= 0 && killed.insert(attack.target) {
+            on_kill(world, log, attack.attacker, attack.target, &attack.target_name);
+        }
+    }
+}
+
+struct ResolvedAttack {
+    attacker: Entity,
+    target: Entity,
+    damage: i32,
+    attacker_name: String,
+    target_name: String,
 }
 
 fn roll_damage<R: Rng>(world: &World, attacker: Entity, target: Entity, rng: &mut R) -> i32 {
@@ -43,41 +105,8 @@ fn roll_damage<R: Rng>(world: &World, attacker: Entity, target: Entity, rng: &mu
         .ok()
         .map(|s| s.defense)
         .unwrap_or(0);
-    // d6 roll: bigger swing than d4 so combat feels punchy and stat changes
-    // (equipping weapons, scaling) read clearly in the message log.
     let raw = rng.gen_range(1..=6) + attack;
     (raw - defense).max(1)
-}
-
-fn apply_damage(
-    world: &mut World,
-    log: &mut MessageLog,
-    attacker: Entity,
-    target: Entity,
-    damage: i32,
-) {
-    let attacker_name = name_of(world, attacker);
-    let target_name = name_of(world, target);
-    let (severity, hp_after) = {
-        let mut hp_after = 0;
-        let mut sev = Severity::Combat;
-        if let Ok(mut stats) = world.get::<&mut Stats>(target) {
-            stats.hp -= damage;
-            hp_after = stats.hp;
-            if world.get::<&Player>(target).is_ok() {
-                sev = Severity::Danger;
-            }
-        }
-        (sev, hp_after)
-    };
-    log.push(
-        format!("{attacker_name} hits {target_name} for {damage}."),
-        severity,
-    );
-    apply_on_hit(world, log, attacker, target, &target_name);
-    if hp_after <= 0 {
-        on_kill(world, log, attacker, target, &target_name);
-    }
 }
 
 fn apply_on_hit(
@@ -189,12 +218,12 @@ mod tests {
         let mut log = MessageLog::new();
         let attacker = world.spawn((
             Player,
-            Stats::new(20, 5, 1, 10),
+            Stats::new(20, 5, 1, 1),
             Name("you".into()),
         ));
         let target = world.spawn((
             Mob,
-            Stats::new(8, 2, 0, 10),
+            Stats::new(8, 2, 0, 1),
             Name("rat".into()),
         ));
         world.insert_one(attacker, WantsToAttack { target }).unwrap();
@@ -211,11 +240,11 @@ mod tests {
         let mut log = MessageLog::new();
         let attacker = world.spawn((
             Player,
-            Stats::new(20, 100, 0, 10),
+            Stats::new(20, 100, 0, 1),
             Progression::default(),
             Name("you".into()),
         ));
-        let target = world.spawn((Mob, Stats::new(1, 0, 0, 10), Name("rat".into())));
+        let target = world.spawn((Mob, Stats::new(1, 0, 0, 1), Name("rat".into())));
         world.insert_one(attacker, WantsToAttack { target }).unwrap();
         let mut rng = Pcg64Mcg::seed_from_u64(7);
         resolve(&mut world, &mut log, &mut rng);
@@ -233,12 +262,12 @@ mod tests {
         let mut log = MessageLog::new();
         let attacker = world.spawn((
             Mob,
-            Stats::new(8, 100, 0, 10),
+            Stats::new(8, 100, 0, 1),
             Name("orc".into()),
         ));
         let player = world.spawn((
             Player,
-            Stats::new(1, 1, 0, 10),
+            Stats::new(1, 1, 0, 1),
             Progression::default(),
             Name("you".into()),
         ));

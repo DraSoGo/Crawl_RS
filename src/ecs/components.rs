@@ -76,25 +76,13 @@ pub struct Stats {
     pub hp: i32,
     pub attack: i32,
     pub defense: i32,
-    /// Energy per scheduler tick. 10 is "normal".
-    pub speed: i32,
+    /// Tiles this actor may move during one round.
+    pub move_tiles: i32,
 }
 
 impl Stats {
-    pub const fn new(max_hp: i32, attack: i32, defense: i32, speed: i32) -> Self {
-        Self { max_hp, hp: max_hp, attack, defense, speed }
-    }
-}
-
-/// Energy accumulator for the speed-based turn scheduler.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct Energy {
-    pub value: i32,
-}
-
-impl Energy {
-    pub const fn new(value: i32) -> Self {
-        Self { value }
+    pub const fn new(max_hp: i32, attack: i32, defense: i32, move_tiles: i32) -> Self {
+        Self { max_hp, hp: max_hp, attack, defense, move_tiles }
     }
 }
 
@@ -158,8 +146,6 @@ pub struct StatusEffects {
     pub poison_dmg: i32,
     pub paralysis_turns: i32,
     pub fear_turns: i32,
-    pub speed_buff: i32,
-    pub speed_buff_turns: i32,
     pub attack_buff: i32,
     pub attack_buff_turns: i32,
     pub vision_buff: i32,
@@ -305,7 +291,6 @@ pub enum PotionEffect {
     GreaterHeal(i32),
     FullHeal,
     MaxHpUp(i32),
-    BuffSpeed { amount: i32, turns: i32 },
     BuffAttack { amount: i32, turns: i32 },
     BuffVision { amount: i32, turns: i32 },
     CurePoison,

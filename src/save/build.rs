@@ -4,9 +4,8 @@ use anyhow::{anyhow, Result};
 use hecs::{Entity, World};
 
 use crate::ecs::components::{
-    Ai, Amulet, Energy, Equipment, FieldOfView, HungerClock, Inventory, Item, ItemKind,
-    Mob, Name, Player, Position, Progression, PotionEffect, Renderable, Stats,
-    StatusEffects,
+    Ai, Amulet, Equipment, FieldOfView, HungerClock, Inventory, Item, ItemKind, Mob, Name,
+    Player, Position, Progression, PotionEffect, Renderable, Stats, StatusEffects,
 };
 use crate::map::Map;
 use crate::save::types::{
@@ -61,7 +60,6 @@ fn build_player_snapshot(world: &World) -> Result<PlayerSnapshot> {
         .ok_or_else(|| anyhow!("no player entity to save"))?;
     let pos = *world.get::<&Position>(entity)?;
     let stats = *world.get::<&Stats>(entity)?;
-    let energy = *world.get::<&Energy>(entity)?;
     let progression = *world.get::<&Progression>(entity)?;
     let fov = world.get::<&FieldOfView>(entity)?;
     let inventory = world.get::<&Inventory>(entity).map(|i| i.clone());
@@ -116,7 +114,6 @@ fn build_player_snapshot(world: &World) -> Result<PlayerSnapshot> {
     Ok(PlayerSnapshot {
         pos,
         stats,
-        energy,
         progression,
         fov_radius: fov.radius,
         fov_revealed: revealed,
@@ -136,12 +133,11 @@ fn build_player_snapshot(world: &World) -> Result<PlayerSnapshot> {
 
 fn build_mob_snapshots(world: &World) -> Vec<MobSnapshot> {
     world
-        .query::<(&Mob, &Position, &Stats, &Energy, &Ai, &Name, &Renderable)>()
+        .query::<(&Mob, &Position, &Stats, &Ai, &Name, &Renderable)>()
         .iter()
-        .map(|(_, (_, pos, stats, energy, ai, name, render))| MobSnapshot {
+        .map(|(_, (_, pos, stats, ai, name, render))| MobSnapshot {
             pos: *pos,
             stats: *stats,
-            energy: *energy,
             ai: *ai,
             name: name.0.clone(),
             glyph: render.glyph,

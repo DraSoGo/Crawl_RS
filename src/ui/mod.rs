@@ -1,3 +1,4 @@
+pub mod book;
 pub mod buffer;
 pub mod menus;
 pub mod messages;

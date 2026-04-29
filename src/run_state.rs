@@ -8,14 +8,15 @@ use hecs::World;
 use rand::SeedableRng;
 use rand_pcg::Pcg64Mcg;
 
+use crate::codex::{self, BookPage, CodexProfile};
 pub use crate::ecs::components::HungerClock;
 use crate::ecs::components::{
-    BlocksTile, Energy, Equipment, FieldOfView, Inventory, Name, Player, Position,
+    BlocksTile, Equipment, FieldOfView, Inventory, Name, Player, Position,
     Progression, Renderable, Stats, StatusEffects,
 };
 use crate::ecs::systems::{combat, fov as fov_sys, movement, pickup};
 use crate::game::level::{self, FINAL_DEPTH};
-use crate::game::turn::{self, TURN_THRESHOLD};
+use crate::game::turn;
 use crate::map::{Map, Tile};
 use crate::save::{self, scores::{self, ScoreEntry}};
 use crate::ui::{Buffer, MessageLog};
@@ -28,13 +29,14 @@ pub const PLAYER_FOV_RADIUS: i32 = 8;
 const PLAYER_BASE_HP: i32 = 20;
 const PLAYER_BASE_ATTACK: i32 = 4;
 const PLAYER_BASE_DEFENSE: i32 = 1;
-const PLAYER_BASE_SPEED: i32 = 10;
+const PLAYER_BASE_MOVE: i32 = 1;
 const DESCENT_HEAL: i32 = 5;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UiMode {
     Playing,
     Inventory,
+    Book,
     GameOver,
     Victory,
 }
@@ -51,6 +53,10 @@ pub struct RunState {
     /// Highlighted slot in the inventory screen. Persisted across opens so
     /// the cursor lands where it was last left.
     pub inventory_cursor: usize,
+    pub codex: CodexProfile,
+    pub book_page: BookPage,
+    pub book_mob_cursor: usize,
+    pub book_item_cursor: usize,
 }
 
 pub fn level_dims(buffer: &Buffer) -> (i32, i32) {
@@ -65,6 +71,7 @@ pub fn start_new_run(seed: u64, buffer: &Buffer) -> RunState {
     let mut world = World::new();
     spawn_player_skeleton(&mut world);
     let map = level::build_level(&mut world, seed, depth, w, h);
+    let codex = load_codex_profile();
     let mut state = RunState {
         seed,
         depth,
@@ -75,8 +82,12 @@ pub fn start_new_run(seed: u64, buffer: &Buffer) -> RunState {
         mode: UiMode::Playing,
         finalized: false,
         inventory_cursor: 0,
+        codex,
+        book_page: BookPage::Mob,
+        book_mob_cursor: 0,
+        book_item_cursor: 0,
     };
-    fov_sys::update(&mut state.world, &state.map);
+    update_visibility_and_codex(&mut state);
     state
         .log
         .info(format!("you enter the dungeon (seed {:016x}).", state.seed));
@@ -94,9 +105,8 @@ fn spawn_player_skeleton(world: &mut World) {
             PLAYER_BASE_HP,
             PLAYER_BASE_ATTACK,
             PLAYER_BASE_DEFENSE,
-            PLAYER_BASE_SPEED,
+            PLAYER_BASE_MOVE,
         ),
-        Energy::new(TURN_THRESHOLD),
         Progression::default(),
         Inventory::default(),
         Equipment::default(),
@@ -109,20 +119,13 @@ fn spawn_player_skeleton(world: &mut World) {
 
 pub fn advance_player_turn(state: &mut RunState) {
     movement::apply(&mut state.world, &state.map);
-    combat::resolve(&mut state.world, &mut state.log, &mut state.rng);
-    combat::reap(&mut state.world);
+    update_visibility_and_codex(state);
     let outcome = pickup::run(&mut state.world, &mut state.log);
     if outcome.picked_amulet {
         state.mode = UiMode::Victory;
         return;
     }
-    if combat::player_dead(&state.world) {
-        state.mode = UiMode::GameOver;
-        return;
-    }
-    fov_sys::update(&mut state.world, &state.map);
-    turn::spend_player_energy(&mut state.world);
-    turn::run_npcs_until_player_turn(
+    turn::run_enemy_turn(
         &mut state.world,
         &state.map,
         &mut state.log,
@@ -131,7 +134,7 @@ pub fn advance_player_turn(state: &mut RunState) {
     if combat::player_dead(&state.world) {
         state.mode = UiMode::GameOver;
     }
-    fov_sys::update(&mut state.world, &state.map);
+    update_visibility_and_codex(state);
 }
 
 pub fn try_descend(state: &mut RunState, buffer: &Buffer) {
@@ -152,7 +155,7 @@ pub fn try_descend(state: &mut RunState, buffer: &Buffer) {
     let (w, h) = level_dims(buffer);
     state.map = level::build_level(&mut state.world, state.seed, state.depth, w, h);
     heal_player(&mut state.world, DESCENT_HEAL);
-    fov_sys::update(&mut state.world, &state.map);
+    update_visibility_and_codex(state);
     if state.depth == FINAL_DEPTH {
         state
             .log
@@ -188,6 +191,18 @@ pub fn save_run(state: &RunState) {
         &state.log,
     ) {
         let _ = save::save(&snap);
+    }
+}
+
+pub fn load_codex_profile() -> CodexProfile {
+    crate::save::codex::load().unwrap_or_default()
+}
+
+pub fn update_visibility_and_codex(state: &mut RunState) {
+    fov_sys::update(&mut state.world, &state.map);
+    let discoveries = codex::discover_visible_entries(&state.world);
+    if codex::apply_discoveries(&mut state.codex, discoveries) {
+        let _ = crate::save::codex::save(&state.codex);
     }
 }
 
