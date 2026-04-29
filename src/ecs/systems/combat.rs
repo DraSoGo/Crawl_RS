@@ -10,6 +10,7 @@ use std::collections::{HashMap, HashSet};
 use hecs::{Entity, World};
 use rand::Rng;
 
+use crate::config;
 use crate::data::mobs::TEMPLATES;
 use crate::ecs::components::{
     Dead, Mob, Name, OnHit, Player, Progression, Stats, StatusEffects, WantsToAttack,
@@ -105,8 +106,13 @@ fn roll_damage<R: Rng>(world: &World, attacker: Entity, target: Entity, rng: &mu
         .ok()
         .map(|s| s.defense)
         .unwrap_or(0);
-    let raw = rng.gen_range(1..=6) + attack;
-    (raw - defense).max(1)
+    let roll = if config::COMBAT.damage_roll_sides > 0 {
+        rng.gen_range(1..=config::COMBAT.damage_roll_sides)
+    } else {
+        0
+    };
+    let raw = config::COMBAT.flat_damage_bonus + roll + attack;
+    (raw - defense).max(config::COMBAT.minimum_damage)
 }
 
 fn apply_on_hit(
@@ -278,5 +284,17 @@ mod tests {
         // Player not despawned even after reap.
         reap(&mut world);
         assert!(world.contains(player));
+    }
+
+    #[test]
+    fn damage_matches_attack_minus_defense_when_roll_is_disabled() {
+        let mut world = World::new();
+        let attacker = world.spawn((Player, Stats::new(10, 7, 0, 1), Name("you".into())));
+        let target = world.spawn((Mob, Stats::new(10, 1, 3, 1), Name("jackal".into())));
+        let mut rng = Pcg64Mcg::seed_from_u64(0);
+
+        let damage = roll_damage(&world, attacker, target, &mut rng);
+
+        assert_eq!(damage, 4);
     }
 }

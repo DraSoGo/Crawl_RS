@@ -61,7 +61,7 @@ fn draw_hud(buffer: &mut Buffer, state: &RunState) {
     let level = player_level(&state.world).unwrap_or(1);
     let next = crate::ecs::components::Progression::xp_for_next(level);
     let line = format!(
-        "lv {level} ({xp}/{next})  depth {}  hp {hp}/{max_hp}  atk+{atk}  def-{def}  seed {:016x}  h-help",
+        "lv {level} ({xp}/{next})  depth {}  hp {hp}/{max_hp}  atk {atk}  def {def}  seed {:016x}  h-help",
         state.depth, state.seed
     );
     let truncated = truncate_to_width(&line, buffer.width() as usize);

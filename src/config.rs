@@ -37,6 +37,13 @@ pub struct WorldConfig {
 }
 
 #[derive(Clone, Copy, Debug)]
+pub struct CombatConfig {
+    pub flat_damage_bonus: i32,
+    pub damage_roll_sides: i32,
+    pub minimum_damage: i32,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct HungerConfig {
     pub starve_threshold: i32,
     pub hungry_threshold: i32,
@@ -51,7 +58,7 @@ pub const UI: UiConfig = UiConfig {
 pub const PLAYER: PlayerConfig = PlayerConfig {
     fov_radius: 8,
     base_hp: 20,
-    base_attack: 0,
+    base_attack: 4,
     base_defense: 1,
     base_move: 1,
     descent_heal: 5,
@@ -74,6 +81,12 @@ pub const WORLD: WorldConfig = WorldConfig {
     depth_hp_scale: 0.25,
     depth_attack_scale: 0.25,
     ranged_attack_range: 2,
+};
+
+pub const COMBAT: CombatConfig = CombatConfig {
+    flat_damage_bonus: 0,
+    damage_roll_sides: 0,
+    minimum_damage: 1,
 };
 
 pub const HUNGER: HungerConfig = HungerConfig {

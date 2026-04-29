@@ -79,23 +79,36 @@ fn heal(
 }
 
 fn apply_buff_attack(world: &mut World, target: Entity, amount: i32, turns: i32) {
-    if let Ok(mut s) = world.get::<&mut StatusEffects>(target) {
-        s.attack_buff = s.attack_buff.max(amount);
-        s.attack_buff_turns = s.attack_buff_turns.max(turns);
-    }
+    // Re-applying a still-active buff used to add the bonus a second time
+    // while the timer's expiration only undoes it once — leaving residual
+    // attack on the player. Refund the prior bonus first, then re-apply,
+    // so Stats.attack stays in sync with `attack_buff`.
+    let prior = world
+        .get::<&StatusEffects>(target)
+        .map(|s| if s.attack_buff_turns > 0 { s.attack_buff } else { 0 })
+        .unwrap_or(0);
     if let Ok(mut stats) = world.get::<&mut Stats>(target) {
-        stats.attack += amount;
+        stats.attack += amount - prior;
+    }
+    if let Ok(mut s) = world.get::<&mut StatusEffects>(target) {
+        s.attack_buff = amount;
+        s.attack_buff_turns = s.attack_buff_turns.max(turns);
     }
 }
 
 fn apply_buff_vision(world: &mut World, target: Entity, amount: i32, turns: i32) {
-    if let Ok(mut s) = world.get::<&mut StatusEffects>(target) {
-        s.vision_buff = s.vision_buff.max(amount);
-        s.vision_buff_turns = s.vision_buff_turns.max(turns);
-    }
+    // Same stacking fix as `apply_buff_attack` (see comment there).
+    let prior = world
+        .get::<&StatusEffects>(target)
+        .map(|s| if s.vision_buff_turns > 0 { s.vision_buff } else { 0 })
+        .unwrap_or(0);
     if let Ok(mut fov) = world.get::<&mut FieldOfView>(target) {
-        fov.radius += amount;
+        fov.radius += amount - prior;
         fov.dirty = true;
+    }
+    if let Ok(mut s) = world.get::<&mut StatusEffects>(target) {
+        s.vision_buff = amount;
+        s.vision_buff_turns = s.vision_buff_turns.max(turns);
     }
 }
 
@@ -129,12 +142,21 @@ pub fn apply_scroll<R: Rng>(
         ScrollKind::Fear => apply_fear_aura(world, log, player, 10),
         ScrollKind::Summon => summon_allies(world, log, rng, player),
         ScrollKind::Light => {
+            // Only bump radius if no light effect is active; otherwise
+            // re-reading the scroll would stack +4 each time while the
+            // status::tick expiration only subtracts 4 once.
+            let already_lit = world
+                .get::<&StatusEffects>(player)
+                .map(|s| s.light_turns > 0)
+                .unwrap_or(false);
             if let Ok(mut s) = world.get::<&mut StatusEffects>(player) {
                 s.light_turns = s.light_turns.max(50);
             }
-            if let Ok(mut fov) = world.get::<&mut FieldOfView>(player) {
-                fov.radius += 4;
-                fov.dirty = true;
+            if !already_lit {
+                if let Ok(mut fov) = world.get::<&mut FieldOfView>(player) {
+                    fov.radius += 4;
+                    fov.dirty = true;
+                }
             }
             log.status(format!("the {item_name} brightens your sight."));
         }

@@ -1,5 +1,3 @@
-use crossterm::style::Color;
-
 use crate::run_state::RunState;
 
 use super::Buffer;
@@ -27,15 +25,15 @@ const HELP_ROWS: &[(&str, &str)] = &[
 ];
 
 pub fn draw_help(_state: &RunState, buffer: &mut Buffer) {
-    let lines = help_lines();
-    let total_h = buffer.height() as usize;
-    let total_w = buffer.width() as usize;
-    let start_y = total_h.saturating_sub(lines.len()) / 2;
-    for (offset, line) in lines.iter().enumerate() {
-        let y = (start_y + offset) as u16;
-        let x = total_w.saturating_sub(line.chars().count()) / 2;
-        buffer.put_str(x as u16, y, line, Color::White, Color::Reset);
-    }
+    let body = help_lines();
+    super::layout::draw_panel(
+        buffer,
+        super::layout::PanelBlock::new(
+            "Help",
+            &body,
+            "press h / esc / enter to close",
+        ),
+    );
 }
 
 fn help_lines() -> Vec<String> {
@@ -44,17 +42,12 @@ fn help_lines() -> Vec<String> {
         .map(|(key, _)| key.chars().count())
         .max()
         .unwrap_or(0);
-    let mut lines = vec![
-        "Help".to_string(),
-        String::new(),
-        format!("{:<key_width$}  {}", "Key", "Action"),
-        format!("{:-<key_width$}  {:-<6}", "", ""),
-    ];
+    let mut lines = Vec::with_capacity(HELP_ROWS.len() + 2);
+    lines.push(format!("{:<key_width$}   {}", "Key", "Action"));
+    lines.push(format!("{:-<key_width$}   {:-<6}", "", ""));
     for (key, action) in HELP_ROWS {
-        lines.push(format!("{:<key_width$}  {}", key, action));
+        lines.push(format!("{:<key_width$}   {}", key, action));
     }
-    lines.push(String::new());
-    lines.push("press h / esc / enter to close".to_string());
     lines
 }
 
