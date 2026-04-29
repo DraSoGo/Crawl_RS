@@ -11,8 +11,8 @@ use rand_pcg::Pcg64Mcg;
 use crate::data::items::{self, ItemTemplate};
 use crate::data::mobs::{self, MobTemplate};
 use crate::ecs::components::{
-    Ai, Amulet, BlocksTile, Energy, FieldOfView, Item, Mob, Name, Player, Position,
-    Renderable, Stats,
+    Ai, Amulet, BlocksTile, CasterHeal, Energy, Faction, FieldOfView, Flying, Item, Mob,
+    Name, Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
 };
 use crate::game::turn::TURN_THRESHOLD;
 use crate::map::gen::{bsp_generate, BspConfig, Dungeon};
@@ -126,16 +126,46 @@ fn spawn_mob(world: &mut World, t: &MobTemplate, x: i32, y: i32, depth: u32) {
     let scale = 1.0 + 0.25 * ((depth as f32) - 1.0).max(0.0);
     let max_hp = ((t.max_hp as f32) * scale).ceil() as i32;
     let attack = ((t.attack as f32) * scale).round() as i32;
-    world.spawn((
+    let glyph = match t.ai {
+        // Mimics start hidden as their disguise glyph.
+        crate::ecs::components::AiKind::Mimic { disguise, .. } => disguise,
+        _ => t.glyph,
+    };
+    let entity = world.spawn((
         Position::new(x, y),
-        Renderable::new(t.glyph, t.fg, crossterm::style::Color::Reset, MOB_LAYER),
+        Renderable::new(glyph, t.fg, crossterm::style::Color::Reset, MOB_LAYER),
         Mob,
         BlocksTile,
         Stats::new(max_hp, attack.max(1), t.defense, t.speed),
         Energy::new(0),
-        Ai::hostile(t.sight),
+        Ai { kind: t.ai, sight_radius: t.sight },
+        Faction::Hostile,
+        StatusEffects::default(),
         Name(t.name.to_string()),
     ));
+    if let Some(on_hit) = t.on_hit {
+        let _ = world.insert_one(entity, on_hit);
+    }
+    if t.regen_per_turn > 0 {
+        let _ = world.insert_one(entity, Regen { per_turn: t.regen_per_turn });
+    }
+    if t.invisible {
+        if let Ok(mut s) = world.get::<&mut StatusEffects>(entity) {
+            s.invisible = true;
+        }
+    }
+    if let Some((heal_amount, chance_pct)) = t.caster_heal {
+        let _ = world.insert_one(entity, CasterHeal { heal_amount, chance_pct });
+    }
+    if let Some(chance_pct) = t.summoner_chance {
+        let _ = world.insert_one(
+            entity,
+            Summoner { chance_pct, summon_template: 0 },
+        );
+    }
+    if t.flying {
+        let _ = world.insert_one(entity, Flying);
+    }
 }
 
 fn spawn_items(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64Mcg) {

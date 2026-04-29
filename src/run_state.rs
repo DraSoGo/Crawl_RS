@@ -8,9 +8,10 @@ use hecs::World;
 use rand::SeedableRng;
 use rand_pcg::Pcg64Mcg;
 
+pub use crate::ecs::components::HungerClock;
 use crate::ecs::components::{
     BlocksTile, Energy, Equipment, FieldOfView, Inventory, Name, Player, Position,
-    Progression, Renderable, Stats,
+    Progression, Renderable, Stats, StatusEffects,
 };
 use crate::ecs::systems::{combat, fov as fov_sys, movement, pickup};
 use crate::game::level::{self, FINAL_DEPTH};
@@ -99,6 +100,8 @@ fn spawn_player_skeleton(world: &mut World) {
         Progression::default(),
         Inventory::default(),
         Equipment::default(),
+        StatusEffects::default(),
+        HungerClock::new(800),
         Name("you".to_string()),
         FieldOfView::new(PLAYER_FOV_RADIUS, 1, 1),
     ));
@@ -236,6 +239,17 @@ pub fn player_combat(world: &World) -> Option<(i32, i32)> {
         .next()
 }
 
+pub fn player_hunger(world: &World) -> Option<&'static str> {
+    use crate::ecs::components::HungerState;
+    let player = world.query::<&Player>().iter().next().map(|(e, _)| e)?;
+    let h = world.get::<&HungerClock>(player).ok()?;
+    Some(match h.state() {
+        HungerState::Sated => "sated",
+        HungerState::Hungry => "hungry",
+        HungerState::Starving => "STARVING",
+    })
+}
+
 pub fn player_xp(world: &World) -> Option<i32> {
     world
         .query::<(&Player, &Progression)>()
@@ -250,6 +264,57 @@ pub fn player_kills(world: &World) -> Option<u32> {
         .iter()
         .map(|(_, (_, p))| p.kills)
         .next()
+}
+
+pub fn player_level(world: &World) -> Option<u32> {
+    world
+        .query::<(&Player, &Progression)>()
+        .iter()
+        .map(|(_, (_, p))| p.level)
+        .next()
+}
+
+/// Award XP to whichever entity is the player. Loops while XP exceeds the
+/// next-level threshold so a single big award can grant several levels at
+/// once. Each level grants +5 max HP (+5 current HP), +1 attack, +1 defense.
+pub fn award_xp(world: &mut World, log: &mut MessageLog, amount: i32) {
+    if amount <= 0 {
+        return;
+    }
+    let player = match world.query::<&Player>().iter().next().map(|(e, _)| e) {
+        Some(e) => e,
+        None => return,
+    };
+    let mut levels_gained = 0u32;
+    let mut new_level = 0u32;
+    let mut hp_bonus_total = 0;
+    if let Ok(mut prog) = world.get::<&mut Progression>(player) {
+        prog.xp = prog.xp.saturating_add(amount);
+        loop {
+            let needed = Progression::xp_for_next(prog.level);
+            if prog.xp < needed {
+                break;
+            }
+            prog.xp -= needed;
+            prog.level += 1;
+            levels_gained += 1;
+        }
+        new_level = prog.level;
+    }
+    if levels_gained == 0 {
+        return;
+    }
+    if let Ok(mut stats) = world.get::<&mut Stats>(player) {
+        let hp_bump = 5 * levels_gained as i32;
+        stats.max_hp += hp_bump;
+        stats.hp = (stats.hp + hp_bump).min(stats.max_hp);
+        stats.attack += levels_gained as i32;
+        stats.defense += levels_gained as i32;
+        hp_bonus_total = hp_bump;
+    }
+    log.status(format!(
+        "you reach level {new_level}! (+{hp_bonus_total} max hp, +{levels_gained} atk/def)"
+    ));
 }
 
 fn heal_player(world: &mut World, amount: i32) {

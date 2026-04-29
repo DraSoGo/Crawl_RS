@@ -3,8 +3,8 @@
 use hecs::{Entity, World};
 
 use crate::ecs::components::{
-    Amulet, BlocksTile, Equipment, FieldOfView, Inventory, Item, Mob, Name, Player,
-    Renderable,
+    Amulet, BlocksTile, Equipment, Faction, FieldOfView, Inventory, Item, Mob, Name,
+    Player, Renderable, StatusEffects,
 };
 use crate::map::{fov::Visibility, Map};
 use crate::save::types::{
@@ -107,6 +107,8 @@ fn restore_player(world: &mut World, snap: &PlayerSnapshot) -> Entity {
     let equipment = Equipment {
         weapon: snap.equipped_weapon_idx.and_then(|i| entity_for_idx.get(i).copied()),
         armor: snap.equipped_armor_idx.and_then(|i| entity_for_idx.get(i).copied()),
+        ring: snap.equipped_ring_idx.and_then(|i| entity_for_idx.get(i).copied()),
+        amulet: snap.equipped_amulet_idx.and_then(|i| entity_for_idx.get(i).copied()),
     };
 
     world.spawn((
@@ -126,6 +128,8 @@ fn restore_player(world: &mut World, snap: &PlayerSnapshot) -> Entity {
         inventory,
         equipment,
         fov,
+        snap.status,
+        snap.hunger,
     ))
 }
 
@@ -143,6 +147,8 @@ fn restore_mob(world: &mut World, snap: MobSnapshot) {
         snap.stats,
         snap.energy,
         snap.ai,
+        Faction::Hostile,
+        StatusEffects::default(),
         Name(snap.name),
     ));
 }

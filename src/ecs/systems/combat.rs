@@ -10,7 +10,7 @@ use rand::Rng;
 
 use crate::data::mobs::TEMPLATES;
 use crate::ecs::components::{
-    Dead, Mob, Name, Player, Progression, Stats, WantsToAttack,
+    Dead, Mob, Name, OnHit, Player, Progression, Stats, StatusEffects, WantsToAttack,
 };
 use crate::ui::{MessageLog, Severity};
 
@@ -74,8 +74,35 @@ fn apply_damage(
         format!("{attacker_name} hits {target_name} for {damage}."),
         severity,
     );
+    apply_on_hit(world, log, attacker, target, &target_name);
     if hp_after <= 0 {
         on_kill(world, log, attacker, target, &target_name);
+    }
+}
+
+fn apply_on_hit(
+    world: &mut World,
+    log: &mut MessageLog,
+    attacker: Entity,
+    target: Entity,
+    target_name: &str,
+) {
+    let on_hit = match world.get::<&OnHit>(attacker) {
+        Ok(o) => *o,
+        Err(_) => return,
+    };
+    if on_hit.poison_turns > 0 {
+        if let Ok(mut s) = world.get::<&mut StatusEffects>(target) {
+            s.poison_turns = s.poison_turns.max(on_hit.poison_turns);
+            s.poison_dmg = s.poison_dmg.max(on_hit.poison_dmg.max(1));
+        }
+        log.danger(format!("{target_name} is poisoned!"));
+    }
+    if on_hit.paralysis_turns > 0 {
+        if let Ok(mut s) = world.get::<&mut StatusEffects>(target) {
+            s.paralysis_turns = s.paralysis_turns.max(on_hit.paralysis_turns);
+        }
+        log.danger(format!("{target_name} is paralyzed!"));
     }
 }
 
@@ -98,15 +125,14 @@ fn on_kill(
 
     log.combat(format!("{target_name} dies!"));
     let xp = mob_xp(world, target).unwrap_or(0);
+    let attacker_is_player = world.get::<&Player>(attacker).is_ok();
     if let Ok(mut prog) = world.get::<&mut Progression>(attacker) {
-        prog.xp = prog.xp.saturating_add(xp);
         prog.kills = prog.kills.saturating_add(1);
-        if xp > 0 {
-            log.status(format!("you gain {xp} xp."));
-        }
     }
-    // Tag for reaping rather than despawning here so we don't invalidate
-    // entity references held by other intents in the same frame.
+    if attacker_is_player && xp > 0 {
+        log.status(format!("you gain {xp} xp."));
+        crate::run_state::award_xp(world, log, xp);
+    }
     let _ = world.insert_one(target, Dead);
 }
 

@@ -116,11 +116,19 @@ crawl-rs --dump --count 5 --seed 1
 `ctrl-c`) to avoid clobbering a movement key. On the title screen and the
 death/victory screens, `q` still works as quit.
 
-In the inventory screen, the up/down arrows (or `w` / `s`) move the cursor
-and `f` (or `enter`) uses or equips the highlighted slot. Use a potion of
-healing for HP, a scroll of mapping to reveal the level, a scroll of
-teleport to fling yourself, or wear armor / wield weapons for permanent
-stat bonuses. `esc` or `i` closes the screen without spending a turn.
+In the inventory screen, the up/down arrows (or `w` / `x`) move the cursor,
+`f` (or `enter`) uses or equips the highlighted slot, and `s` sells the
+slot for XP (equipped items auto-unequip on sale). Use a potion of healing
+for HP, a scroll of mapping to reveal the level, a scroll of teleport to
+fling yourself, or wear armor / wield weapons for permanent stat bonuses.
+`esc` or `i` closes the screen without spending a turn.
+
+## Levelling
+
+Killing mobs and selling items both award XP. Each level requires
+`50 × current_level` XP. On level-up the player gains **+5 max HP, +5 HP,
++1 attack, +1 defense**. The HUD shows current level + progress as
+`lv N (xp/needed)`.
 
 ## How it works
 

@@ -1,7 +1,4 @@
-//! Component types stored in the `hecs::World`.
-//!
-//! Components are kept POD-ish so that future phases can serialise them via
-//! bincode without surprises. Behaviour lives in systems, not on components.
+//! Component types stored in the `hecs::World`. POD-ish; behaviour in systems.
 
 use crossterm::style::Color;
 use serde::{Deserialize, Serialize};
@@ -40,9 +37,7 @@ impl Renderable {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Player;
 
-/// Field-of-view component. Held by entities that need to see (initially the
-/// player; mobs in Phase 6). The visibility/revealed bitmaps live in
-/// `map::fov::Visibility`.
+/// FOV component. Bitmaps live in `map::fov::Visibility`.
 #[derive(Clone, Debug)]
 pub struct FieldOfView {
     pub radius: i32,
@@ -61,8 +56,7 @@ impl FieldOfView {
     }
 }
 
-/// Pending movement, queued by the input system and consumed by the movement
-/// system within the same turn. Not meant to persist across frames.
+/// Pending movement; consumed by movement system within the same turn.
 #[derive(Clone, Copy, Debug)]
 pub struct MoveIntent {
     pub dx: i32,
@@ -117,6 +111,18 @@ pub struct BlocksTile;
 pub enum AiKind {
     /// Charge the player when in line of sight, otherwise wander randomly.
     Hostile,
+    /// Idle until the player gets within `wake_radius` tiles, then becomes
+    /// Hostile permanently.
+    Sleeper { wake_radius: i32 },
+    /// Hostile while above `flee_below_pct` HP percent; flees the player when
+    /// HP drops below.
+    Fleeing { flee_below_pct: i32 },
+    /// Stays at distance ≥ `prefer_range`; otherwise behaves like Hostile.
+    /// Combat handles the actual ranged attack as a "bump-at-distance".
+    Ranged { prefer_range: i32 },
+    /// Disguised as `disguise` glyph; switches to Hostile when player is
+    /// adjacent.
+    Mimic { disguise: char, revealed: bool },
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -131,6 +137,114 @@ impl Ai {
     }
 }
 
+/// Faction tag distinguishes friendly from hostile actors when summoned
+/// allies appear. Default is `Hostile` for any mob.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Faction {
+    PlayerAlly,
+    Hostile,
+}
+
+impl Default for Faction {
+    fn default() -> Self {
+        Faction::Hostile
+    }
+}
+
+/// Status effects with timers. Zero-valued field = no effect.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct StatusEffects {
+    pub poison_turns: i32,
+    pub poison_dmg: i32,
+    pub paralysis_turns: i32,
+    pub fear_turns: i32,
+    pub speed_buff: i32,
+    pub speed_buff_turns: i32,
+    pub attack_buff: i32,
+    pub attack_buff_turns: i32,
+    pub vision_buff: i32,
+    pub vision_buff_turns: i32,
+    pub light_turns: i32,
+    pub regen_per_turn: i32,
+    pub invisible: bool,
+}
+
+impl StatusEffects {
+    pub fn paralyzed(&self) -> bool {
+        self.paralysis_turns > 0
+    }
+    pub fn afraid(&self) -> bool {
+        self.fear_turns > 0
+    }
+}
+
+/// Inflicted on hit by certain mobs (ghoul, wyvern). Combat reads this off
+/// the *attacker* and applies the listed effects to the defender.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct OnHit {
+    pub poison_turns: i32,
+    pub poison_dmg: i32,
+    pub paralysis_turns: i32,
+}
+
+/// Per-turn passive heal (troll, ring of regen). Applied by status-tick.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct Regen {
+    pub per_turn: i32,
+}
+
+/// Hunger clock. Player ticks down each turn; below threshold → HP drain.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct HungerClock {
+    pub satiation: i32,
+    pub max_satiation: i32,
+}
+
+impl HungerClock {
+    pub const STARVE_THRESHOLD: i32 = 0;
+    pub const HUNGRY_THRESHOLD: i32 = 200;
+    pub fn new(max: i32) -> Self {
+        Self { satiation: max, max_satiation: max }
+    }
+    pub fn state(&self) -> HungerState {
+        if self.satiation <= Self::STARVE_THRESHOLD {
+            HungerState::Starving
+        } else if self.satiation <= Self::HUNGRY_THRESHOLD {
+            HungerState::Hungry
+        } else {
+            HungerState::Sated
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HungerState {
+    Sated,
+    Hungry,
+    Starving,
+}
+
+/// Casts a self-heal occasionally (gnoll shaman). Probability is rolled per
+/// turn during the AI step.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct CasterHeal {
+    pub heal_amount: i32,
+    pub chance_pct: i32,
+}
+
+/// Each turn, has `chance_pct` chance to spawn a `summon_glyph` mob nearby
+/// (lich → skeleton). Summoned mobs use the template name.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct Summoner {
+    pub chance_pct: i32,
+    pub summon_template: u32,
+}
+
+/// Marker that this mob is "flying" — informational; current movement code
+/// treats it as hostile but with full pathing freedom rules unchanged.
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+pub struct Flying;
+
 /// Display name used by the message log and HUD.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Name(pub String);
@@ -142,12 +256,26 @@ pub struct WantsToAttack {
     pub target: hecs::Entity,
 }
 
-/// Player progression. Phase 7 awards XP on kills; level-ups are deferred to
-/// later balance passes.
-#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize)]
+/// Player progression. XP accumulates from kills and item sales; level-ups
+/// are checked in `award_xp` (see `run_state`). Level starts at 1.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct Progression {
     pub xp: i32,
+    pub level: u32,
     pub kills: u32,
+}
+
+impl Default for Progression {
+    fn default() -> Self {
+        Self { xp: 0, level: 1, kills: 0 }
+    }
+}
+
+impl Progression {
+    /// XP required to advance from `level` to `level + 1`.
+    pub fn xp_for_next(level: u32) -> i32 {
+        50 * (level as i32).max(1)
+    }
 }
 
 /// Marker placed on dead entities so they get cleaned up after the combat
@@ -158,16 +286,68 @@ pub struct Dead;
 /// What kind of item this is and how it behaves on use.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ItemKind {
-    Potion { heal: i32 },
+    Potion(PotionEffect),
     Scroll(ScrollKind),
     Weapon { attack_bonus: i32 },
     Armor { defense_bonus: i32 },
+    Ring(RingEffect),
+    AmuletItem(AmuletEffect),
+    Wand { kind: WandKind, charges: i32 },
+    Throwable(ThrowableKind),
+    Food { nutrition: i32, poisonous: bool },
+    Corpse,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum PotionEffect {
+    /// Direct heal. Old `Potion { heal }` maps to this.
+    Heal(i32),
+    GreaterHeal(i32),
+    FullHeal,
+    MaxHpUp(i32),
+    BuffSpeed { amount: i32, turns: i32 },
+    BuffAttack { amount: i32, turns: i32 },
+    BuffVision { amount: i32, turns: i32 },
+    CurePoison,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ScrollKind {
     Mapping,
     Teleport,
+    Identify,
+    MagicMissile,
+    EnchantWeapon,
+    EnchantArmor,
+    Fear,
+    Summon,
+    Light,
+    Recall,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum WandKind {
+    Fire,
+    Cold,
+    Lightning,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum RingEffect {
+    Regen,
+    Protection,
+    Vision,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum AmuletEffect {
+    TeleportControl,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum ThrowableKind {
+    OilFlask,
+    SmokeBomb,
 }
 
 /// Marker on item entities. The kind, name, and renderable carry the rest of
@@ -180,7 +360,7 @@ pub struct Item {
 
 impl Default for ItemKind {
     fn default() -> Self {
-        ItemKind::Potion { heal: 0 }
+        ItemKind::Potion(PotionEffect::Heal(0))
     }
 }
 
@@ -202,12 +382,14 @@ impl Inventory {
     }
 }
 
-/// What's currently equipped. The component values point to entities still
-/// stored in `Inventory`; equipping does not remove them from the inventory.
+/// What's currently equipped. Slot values point to entities held in
+/// `Inventory`; equipping does not remove them from the inventory.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Equipment {
     pub weapon: Option<hecs::Entity>,
     pub armor: Option<hecs::Entity>,
+    pub ring: Option<hecs::Entity>,
+    pub amulet: Option<hecs::Entity>,
 }
 
 /// Marker on the win-condition artifact. Distinct from `Item` so the pickup

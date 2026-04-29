@@ -259,9 +259,37 @@ fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {
             }
             Some(false)
         }
-        KeyCode::Down | KeyCode::Char('s') => {
+        KeyCode::Down | KeyCode::Char('x') => {
             if inv_len > 0 {
                 state.inventory_cursor = (state.inventory_cursor + 1) % inv_len;
+            }
+            Some(false)
+        }
+        KeyCode::Char('s') => {
+            if inv_len == 0 {
+                return Some(false);
+            }
+            let index = state.inventory_cursor;
+            let sold = inventory_sys::sell_index(&mut state.world, &mut state.log, index);
+            if sold {
+                let new_len = inventory_len(&state.world);
+                if state.inventory_cursor >= new_len {
+                    state.inventory_cursor = new_len.saturating_sub(1);
+                }
+                fov_sys::update(&mut state.world, &state.map);
+                turn::spend_player_energy(&mut state.world);
+                turn::run_npcs_until_player_turn(
+                    &mut state.world,
+                    &state.map,
+                    &mut state.log,
+                    &mut state.rng,
+                );
+                if crate::ecs::systems::combat::player_dead(&state.world) {
+                    state.mode = UiMode::GameOver;
+                    return Some(true);
+                }
+                fov_sys::update(&mut state.world, &state.map);
+                save_or_finalize(state);
             }
             Some(false)
         }

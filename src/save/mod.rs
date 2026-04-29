@@ -23,8 +23,9 @@ pub use types::SaveSnapshot;
 mod tests {
     use super::*;
     use crate::ecs::components::{
-        Ai, BlocksTile, Energy, Equipment, FieldOfView, Inventory, Item, ItemKind, Mob,
-        Name, Player, Position, Progression, Renderable, Stats,
+        Ai, BlocksTile, Energy, Equipment, Faction, FieldOfView, HungerClock, Inventory,
+        Item, ItemKind, Mob, Name, Player, Position, PotionEffect, Progression,
+        Renderable, Stats, StatusEffects,
     };
     use crate::map::Map;
     use crate::ui::messages::MessageLog;
@@ -45,9 +46,11 @@ mod tests {
             BlocksTile,
             Stats::new(20, 4, 1, 10),
             Energy::new(100),
-            Progression { xp: 17, kills: 3 },
+            Progression { xp: 17, level: 2, kills: 3 },
             Inventory::default(),
             Equipment::default(),
+            StatusEffects::default(),
+            HungerClock::new(800),
             Name("you".to_string()),
             FieldOfView::new(8, map.width(), map.height()),
         ));
@@ -64,6 +67,8 @@ mod tests {
             Stats::new(4, 1, 0, 12),
             Energy::new(50),
             Ai::hostile(6),
+            Faction::Hostile,
+            StatusEffects::default(),
             Name("rat".to_string()),
         ));
         world.spawn((
@@ -74,7 +79,7 @@ mod tests {
                 crossterm::style::Color::Reset,
                 50,
             ),
-            Item { kind: ItemKind::Potion { heal: 8 } },
+            Item { kind: ItemKind::Potion(PotionEffect::Heal(8)) },
             Name("potion of healing".to_string()),
         ));
         (map, world)

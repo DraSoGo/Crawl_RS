@@ -4,8 +4,9 @@ use anyhow::{anyhow, Result};
 use hecs::{Entity, World};
 
 use crate::ecs::components::{
-    Ai, Amulet, Energy, Equipment, FieldOfView, Inventory, Item, ItemKind, Mob, Name,
-    Player, Position, Progression, Renderable, Stats,
+    Ai, Amulet, Energy, Equipment, FieldOfView, HungerClock, Inventory, Item, ItemKind,
+    Mob, Name, Player, Position, Progression, PotionEffect, Renderable, Stats,
+    StatusEffects,
 };
 use crate::map::Map;
 use crate::save::types::{
@@ -74,6 +75,8 @@ fn build_player_snapshot(world: &World) -> Result<PlayerSnapshot> {
     let mut inv_snapshots = Vec::new();
     let mut weapon_idx = None;
     let mut armor_idx = None;
+    let mut ring_idx = None;
+    let mut amulet_idx = None;
     if let Ok(inv) = inventory {
         for (i, item_entity) in inv.items.iter().enumerate() {
             inv_snapshots.push(item_to_snapshot(world, *item_entity));
@@ -83,8 +86,22 @@ fn build_player_snapshot(world: &World) -> Result<PlayerSnapshot> {
             if equipment.armor == Some(*item_entity) {
                 armor_idx = Some(i);
             }
+            if equipment.ring == Some(*item_entity) {
+                ring_idx = Some(i);
+            }
+            if equipment.amulet == Some(*item_entity) {
+                amulet_idx = Some(i);
+            }
         }
     }
+    let status = world
+        .get::<&StatusEffects>(entity)
+        .map(|s| *s)
+        .unwrap_or_default();
+    let hunger = world
+        .get::<&HungerClock>(entity)
+        .map(|h| *h)
+        .unwrap_or_else(|_| HungerClock::new(800));
 
     let (fov_w, fov_h) = (fov.view.width(), fov.view.height());
     let mut visible = Vec::with_capacity((fov_w * fov_h) as usize);
@@ -109,7 +126,11 @@ fn build_player_snapshot(world: &World) -> Result<PlayerSnapshot> {
         inventory: inv_snapshots,
         equipped_weapon_idx: weapon_idx,
         equipped_armor_idx: armor_idx,
+        equipped_ring_idx: ring_idx,
+        equipped_amulet_idx: amulet_idx,
         renderable_glyph: renderable.glyph,
+        status,
+        hunger,
     })
 }
 
@@ -147,7 +168,7 @@ fn item_to_snapshot(world: &World, item: Entity) -> ItemSnapshot {
     let kind = world
         .get::<&Item>(item)
         .map(|i| i.kind)
-        .unwrap_or(ItemKind::Potion { heal: 0 });
+        .unwrap_or(ItemKind::Potion(PotionEffect::Heal(0)));
     let name = world
         .get::<&Name>(item)
         .map(|n| n.0.clone())

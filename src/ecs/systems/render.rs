@@ -4,7 +4,7 @@
 use crossterm::style::Color;
 use hecs::World;
 
-use crate::ecs::components::{FieldOfView, Player, Position, Renderable};
+use crate::ecs::components::{FieldOfView, Player, Position, Renderable, StatusEffects};
 use crate::map::fov::Visibility;
 use crate::map::Map;
 use crate::ui::{Buffer, Cell};
@@ -47,12 +47,32 @@ pub fn player_fov(world: &World) -> Option<Visibility> {
 }
 
 pub fn draw_entities(world: &World, fov: Option<&Visibility>, buffer: &mut Buffer) {
+    let player_pos = world
+        .query::<(&Player, &Position)>()
+        .iter()
+        .map(|(_, (_, p))| (p.x, p.y))
+        .next();
     let mut entries: Vec<(i32, i32, Renderable)> = world
         .query::<(&Position, &Renderable)>()
         .iter()
-        .filter(|(_, (pos, _))| match fov {
-            Some(v) => v.is_visible(pos.x, pos.y),
-            None => true,
+        .filter(|(entity, (pos, _))| {
+            let in_fov = match fov {
+                Some(v) => v.is_visible(pos.x, pos.y),
+                None => true,
+            };
+            if !in_fov {
+                return false;
+            }
+            // Invisible mobs only render when adjacent to the player.
+            if let Ok(status) = world.get::<&StatusEffects>(*entity) {
+                if status.invisible {
+                    if let Some((px, py)) = player_pos {
+                        return (pos.x - px).abs() <= 1 && (pos.y - py).abs() <= 1;
+                    }
+                    return false;
+                }
+            }
+            true
         })
         .map(|(_, (pos, render))| (pos.x, pos.y, *render))
         .collect();

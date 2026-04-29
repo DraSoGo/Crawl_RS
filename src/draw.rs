@@ -6,8 +6,8 @@ use hecs::World;
 
 use crate::ecs::systems::render::{draw_entities, draw_map, player_fov};
 use crate::run_state::{
-    player_combat, player_hp, player_kills, player_xp, RunState, UiMode, HUD_ROWS,
-    LOG_ROWS, RESERVED_ROWS,
+    player_combat, player_hp, player_hunger, player_kills, player_level, player_xp,
+    RunState, UiMode, HUD_ROWS, LOG_ROWS, RESERVED_ROWS,
 };
 use crate::ui::{menus, Buffer, MessageLog, Severity};
 
@@ -55,8 +55,11 @@ fn draw_hud(buffer: &mut Buffer, state: &RunState) {
     let (hp, max_hp) = player_hp(&state.world).unwrap_or((0, 0));
     let (atk, def) = player_combat(&state.world).unwrap_or((0, 0));
     let xp = player_xp(&state.world).unwrap_or(0);
+    let level = player_level(&state.world).unwrap_or(1);
+    let next = crate::ecs::components::Progression::xp_for_next(level);
+    let hunger = player_hunger(&state.world).unwrap_or("?");
     let line = format!(
-        "depth {}  hp {hp}/{max_hp}  atk {atk}  def {def}  xp {xp}  seed {:016x}  wasd qezx . f i > esc",
+        "lv {level} ({xp}/{next})  depth {}  hp {hp}/{max_hp}  atk {atk}  def {def}  {hunger}  seed {:016x}  wasd qezx . f i > esc",
         state.depth, state.seed
     );
     let truncated = truncate_to_width(&line, buffer.width() as usize);
@@ -70,10 +73,12 @@ fn draw_death_screen(buffer: &mut Buffer, state: &RunState) {
 fn death_summary(state: &RunState) -> Vec<(String, Severity)> {
     let xp = player_xp(&state.world).unwrap_or(0);
     let kills = player_kills(&state.world).unwrap_or(0);
+    let level = player_level(&state.world).unwrap_or(1);
     vec![
         ("--- YOU DIED ---".to_string(), Severity::Danger),
         (String::new(), Severity::Info),
         (format!("seed   {:016x}", state.seed), Severity::Info),
+        (format!("level  {level}"), Severity::Status),
         (format!("depth  {}", state.depth), Severity::Info),
         (format!("xp     {xp}"), Severity::Status),
         (format!("kills  {kills}"), Severity::Status),
@@ -89,6 +94,7 @@ fn draw_victory_screen(buffer: &mut Buffer, state: &RunState) {
 fn victory_summary(state: &RunState) -> Vec<(String, Severity)> {
     let xp = player_xp(&state.world).unwrap_or(0);
     let kills = player_kills(&state.world).unwrap_or(0);
+    let level = player_level(&state.world).unwrap_or(1);
     vec![
         ("*** YOU WIN! ***".to_string(), Severity::Status),
         (String::new(), Severity::Info),
@@ -98,6 +104,7 @@ fn victory_summary(state: &RunState) -> Vec<(String, Severity)> {
         ),
         (String::new(), Severity::Info),
         (format!("seed   {:016x}", state.seed), Severity::Info),
+        (format!("level  {level}"), Severity::Status),
         (format!("depth  {}", state.depth), Severity::Info),
         (format!("xp     {xp}"), Severity::Status),
         (format!("kills  {kills}"), Severity::Status),

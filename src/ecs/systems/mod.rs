@@ -6,3 +6,4 @@ pub mod inventory;
 pub mod movement;
 pub mod pickup;
 pub mod render;
+pub mod status;

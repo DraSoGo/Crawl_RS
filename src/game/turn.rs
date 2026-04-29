@@ -9,7 +9,7 @@ use hecs::{Entity, World};
 use rand::Rng;
 
 use crate::ecs::components::{Ai, Energy, Mob, Player, Stats};
-use crate::ecs::systems::{ai, combat, fov as fov_sys, movement};
+use crate::ecs::systems::{ai, combat, fov as fov_sys, movement, status};
 use crate::map::Map;
 use crate::ui::MessageLog;
 
@@ -28,6 +28,10 @@ pub fn run_npcs_until_player_turn<R: Rng>(
             return;
         }
         if player_ready(world) {
+            return;
+        }
+        status::tick(world, log, rng);
+        if combat::player_dead(world) {
             return;
         }
         tick_energy(world);

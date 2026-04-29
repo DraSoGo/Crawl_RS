@@ -3,12 +3,15 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ecs::components::{Ai, Energy, ItemKind, Position, Progression, Stats};
+use crate::ecs::components::{
+    Ai, Energy, HungerClock, ItemKind, Position, Progression, Stats, StatusEffects,
+};
 use crate::map::Map;
 use crate::ui::messages::Severity;
 
-/// Bumped every time the snapshot schema changes incompatibly.
-pub const SAVE_VERSION: u32 = 1;
+/// Bumped every time the snapshot schema changes incompatibly. v3 adds the
+/// `level` field on `Progression` for the level-up system.
+pub const SAVE_VERSION: u32 = 3;
 pub const SAVE_FILENAME: &str = "save.bin";
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,7 +41,11 @@ pub struct PlayerSnapshot {
     pub inventory: Vec<ItemSnapshot>,
     pub equipped_weapon_idx: Option<usize>,
     pub equipped_armor_idx: Option<usize>,
+    pub equipped_ring_idx: Option<usize>,
+    pub equipped_amulet_idx: Option<usize>,
     pub renderable_glyph: char,
+    pub status: StatusEffects,
+    pub hunger: HungerClock,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
