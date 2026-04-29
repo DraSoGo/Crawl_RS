@@ -4,6 +4,8 @@
 //! tick status effects, plan up to `Stats::move_tiles` movement steps, then all
 //! queued attacks resolve simultaneously in a single combat phase.
 
+use std::collections::HashSet;
+
 use hecs::{Entity, World};
 use rand::Rng;
 
@@ -26,6 +28,7 @@ pub fn run_enemy_turn<R: Rng>(
         return;
     }
 
+    let mut moved_this_round: HashSet<Entity> = HashSet::new();
     let max_move = world
         .query::<(&Mob, &Stats)>()
         .iter()
@@ -39,9 +42,9 @@ pub fn run_enemy_turn<R: Rng>(
             if !world.contains(entity) || world.get::<&WantsToAttack>(entity).is_ok() {
                 continue;
             }
-            ai::plan(world, map, rng, entity);
+            ai::plan(world, map, rng, entity, &moved_this_round);
         }
-        movement::apply(world, map);
+        moved_this_round.extend(movement::apply(world, map));
     }
 
     combat::resolve(world, log, rng);

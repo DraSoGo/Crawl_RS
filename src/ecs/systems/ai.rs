@@ -1,6 +1,8 @@
 //! AI: turn an NPC's situation into either a `MoveIntent` or a
 //! `WantsToAttack` intent.
 
+use std::collections::HashSet;
+
 use hecs::{Entity, World};
 use rand::Rng;
 
@@ -10,7 +12,15 @@ use crate::ecs::components::{
 };
 use crate::map::Map;
 
-pub fn plan<R: Rng>(world: &mut World, map: &Map, rng: &mut R, entity: Entity) {
+const RANGED_ATTACK_RANGE: i32 = 2;
+
+pub fn plan<R: Rng>(
+    world: &mut World,
+    map: &Map,
+    rng: &mut R,
+    entity: Entity,
+    moved_this_round: &HashSet<Entity>,
+) {
     if status_skip(world, entity) {
         return;
     }
@@ -19,14 +29,19 @@ pub fn plan<R: Rng>(world: &mut World, map: &Map, rng: &mut R, entity: Entity) {
         Some(v) => v,
         None => return,
     };
+    let can_attack = !moved_this_round.contains(&entity);
     let intent = match view.ai.kind {
-        AiKind::Hostile => plan_hostile(world, map, rng, view),
-        AiKind::Sleeper { wake_radius } => plan_sleeper(world, entity, view, wake_radius),
-        AiKind::Fleeing { flee_below_pct } => {
-            plan_fleeing(world, map, rng, view, flee_below_pct)
+        AiKind::Hostile => plan_hostile(world, map, rng, view, can_attack),
+        AiKind::Sleeper { wake_radius } => {
+            plan_sleeper(world, entity, view, wake_radius, can_attack)
         }
-        AiKind::Ranged { prefer_range } => plan_ranged(world, map, view, prefer_range),
-        AiKind::Mimic { revealed, .. } => plan_mimic(world, map, rng, entity, view, revealed),
+        AiKind::Fleeing { flee_below_pct } => {
+            plan_fleeing(world, map, rng, view, flee_below_pct, can_attack)
+        }
+        AiKind::Ranged { .. } => plan_ranged(world, map, view, can_attack),
+        AiKind::Mimic { revealed, .. } => {
+            plan_mimic(world, map, rng, entity, view, revealed, can_attack)
+        }
     };
     apply_intent(world, entity, intent);
 }
@@ -95,7 +110,13 @@ fn apply_intent(world: &mut World, entity: Entity, intent: Intent) {
     }
 }
 
-fn plan_hostile<R: Rng>(world: &World, map: &Map, rng: &mut R, view: MobView) -> Intent {
+fn plan_hostile<R: Rng>(
+    world: &World,
+    map: &Map,
+    rng: &mut R,
+    view: MobView,
+    can_attack: bool,
+) -> Intent {
     let target_pos = match enemy_position_for(world, view) {
         Some(p) => p,
         None => return random_step(rng),
@@ -105,6 +126,9 @@ fn plan_hostile<R: Rng>(world: &World, map: &Map, rng: &mut R, view: MobView) ->
     let dist_sq = dx * dx + dy * dy;
     let sight_sq = view.ai.sight_radius * view.ai.sight_radius;
     let afraid = world_status_afraid(world, view);
+    if !can_attack && dx.abs() <= 1 && dy.abs() <= 1 {
+        return Intent::None;
+    }
     if dist_sq <= sight_sq && line_of_sight(map, view.x, view.y, target_pos.0, target_pos.1) {
         if afraid {
             return Intent::Move(-dx.signum(), -dy.signum());
@@ -119,6 +143,7 @@ fn plan_sleeper(
     entity: Entity,
     view: MobView,
     wake_radius: i32,
+    can_attack: bool,
 ) -> Intent {
     let target = match enemy_position_for(world, view) {
         Some(p) => p,
@@ -131,6 +156,9 @@ fn plan_sleeper(
         if let Ok(mut ai) = world.get::<&mut Ai>(entity) {
             ai.kind = AiKind::Hostile;
         }
+        if !can_attack && dx.abs() <= 1 && dy.abs() <= 1 {
+            return Intent::None;
+        }
         return Intent::Move(dx.signum(), dy.signum());
     }
     Intent::None
@@ -142,6 +170,7 @@ fn plan_fleeing<R: Rng>(
     rng: &mut R,
     view: MobView,
     flee_below_pct: i32,
+    can_attack: bool,
 ) -> Intent {
     let target = match enemy_position_for(world, view) {
         Some(p) => p,
@@ -152,7 +181,7 @@ fn plan_fleeing<R: Rng>(
     if mob_hp_pct(world, view) <= flee_below_pct {
         return Intent::Move(-dx.signum(), -dy.signum());
     }
-    plan_hostile(world, map, rng, view)
+    plan_hostile(world, map, rng, view, can_attack)
 }
 
 fn mob_hp_pct(world: &World, view: MobView) -> i32 {
@@ -164,7 +193,7 @@ fn mob_hp_pct(world: &World, view: MobView) -> i32 {
     100
 }
 
-fn plan_ranged(world: &World, map: &Map, view: MobView, prefer_range: i32) -> Intent {
+fn plan_ranged(world: &World, map: &Map, view: MobView, can_attack: bool) -> Intent {
     let (target_pos, target_entity) = match enemy_with_entity(world, view) {
         Some(p) => p,
         None => return Intent::None,
@@ -178,12 +207,10 @@ fn plan_ranged(world: &World, map: &Map, view: MobView, prefer_range: i32) -> In
     {
         return Intent::None;
     }
-    let prefer_sq = prefer_range * prefer_range;
-    if dist_sq < (prefer_range / 2).max(1).pow(2) {
-        // Too close: back up.
-        return Intent::Move(-dx.signum(), -dy.signum());
-    }
-    if dist_sq <= prefer_sq {
+    if dist_sq <= RANGED_ATTACK_RANGE * RANGED_ATTACK_RANGE {
+        if !can_attack {
+            return Intent::None;
+        }
         return Intent::Attack(target_entity);
     }
     Intent::Move(dx.signum(), dy.signum())
@@ -196,6 +223,7 @@ fn plan_mimic<R: Rng>(
     entity: Entity,
     view: MobView,
     revealed: bool,
+    can_attack: bool,
 ) -> Intent {
     let target = match enemy_position_for(world, view) {
         Some(p) => p,
@@ -220,7 +248,7 @@ fn plan_mimic<R: Rng>(
         ai: Ai { kind: AiKind::Hostile, sight_radius: view.ai.sight_radius },
         ..view
     };
-    plan_hostile(world, map, rng, view)
+    plan_hostile(world, map, rng, view, can_attack)
 }
 
 /// Look up the position of the closest enemy entity to this mob, taking
@@ -356,8 +384,8 @@ mod tests {
             Faction::Hostile,
         ));
         let mut rng = Pcg64Mcg::seed_from_u64(0);
-        plan(&mut world, &map, &mut rng, mob);
-        movement::apply(&mut world, &map);
+        plan(&mut world, &map, &mut rng, mob, &HashSet::new());
+        let _ = movement::apply(&mut world, &map);
         let pos = *world.get::<&Position>(mob).expect("mob pos");
         assert_eq!(pos, Position::new(14, 5));
     }

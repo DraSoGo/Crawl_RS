@@ -5,7 +5,7 @@
 //! prevents another such entity from entering its tile. Bumping leaves the
 //! intent in place momentarily but consumes it at the end of the system.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use hecs::{Entity, World};
 
@@ -14,10 +14,11 @@ use crate::ecs::components::{
 };
 use crate::map::Map;
 
-pub fn apply(world: &mut World, map: &Map) {
+pub fn apply(world: &mut World, map: &Map) -> HashSet<Entity> {
     let mut blockers = collect_blockers(world);
     let mut moves: Vec<(Entity, i32, i32, bool)> = Vec::new();
     let mut attacks: Vec<(Entity, Entity)> = Vec::new();
+    let mut moved_entities: HashSet<Entity> = HashSet::new();
     let intent_entities: Vec<Entity> = world
         .query::<&MoveIntent>()
         .iter()
@@ -67,6 +68,7 @@ pub fn apply(world: &mut World, map: &Map) {
             pos.y = ny;
         }
         if moved {
+            moved_entities.insert(entity);
             if let Ok(mut fov) = world.get::<&mut FieldOfView>(entity) {
                 fov.dirty = true;
             }
@@ -76,6 +78,7 @@ pub fn apply(world: &mut World, map: &Map) {
     for (attacker, target) in attacks {
         let _ = world.insert_one(attacker, WantsToAttack { target });
     }
+    moved_entities
 }
 
 fn collect_blockers(world: &World) -> HashMap<(i32, i32), Entity> {
@@ -118,7 +121,7 @@ mod tests {
             BlocksTile,
             Player,
         ));
-        apply(&mut world, &map);
+        let _ = apply(&mut world, &map);
         let pos = *world.get::<&Position>(player).expect("position");
         assert!(pos.x == 6 || pos.x == 5);
         assert!(world.get::<&MoveIntent>(player).is_err());
@@ -133,7 +136,7 @@ mod tests {
             MoveIntent::new(-1, 0),
             BlocksTile,
         ));
-        apply(&mut world, &map);
+        let _ = apply(&mut world, &map);
         let pos = *world.get::<&Position>(player).expect("position");
         assert_eq!(pos, Position::new(1, 1));
     }
@@ -143,7 +146,7 @@ mod tests {
         let map = open_map();
         let mut world = World::new();
         let player = world.spawn((Position::new(0, 0), MoveIntent::new(-1, -1)));
-        apply(&mut world, &map);
+        let _ = apply(&mut world, &map);
         let pos = *world.get::<&Position>(player).expect("position");
         assert_eq!(pos, Position::new(0, 0));
     }
@@ -158,7 +161,7 @@ mod tests {
             BlocksTile,
         ));
         let _wall = world.spawn((Position::new(6, 5), BlocksTile));
-        apply(&mut world, &map);
+        let _ = apply(&mut world, &map);
         let pos = *world.get::<&Position>(mover).expect("position");
         assert_eq!(pos, Position::new(5, 5));
     }

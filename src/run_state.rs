@@ -118,11 +118,17 @@ fn spawn_player_skeleton(world: &mut World) {
 }
 
 pub fn advance_player_turn(state: &mut RunState) {
-    movement::apply(&mut state.world, &state.map);
+    let _ = movement::apply(&mut state.world, &state.map);
+    combat::resolve(&mut state.world, &mut state.log, &mut state.rng);
+    combat::reap(&mut state.world);
     update_visibility_and_codex(state);
     let outcome = pickup::run(&mut state.world, &mut state.log);
     if outcome.picked_amulet {
         state.mode = UiMode::Victory;
+        return;
+    }
+    if combat::player_dead(&state.world) {
+        state.mode = UiMode::GameOver;
         return;
     }
     turn::run_enemy_turn(

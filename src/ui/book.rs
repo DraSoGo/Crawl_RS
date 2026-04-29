@@ -205,6 +205,11 @@ fn mob_detail_lines(state: &RunState) -> Vec<String> {
         format!("ATK: {}", template.attack),
         format!("DEF: {}", template.defense),
         format!("Move: {}", template.move_tiles),
+        format!("Sight: {}", template.sight),
+        format!("XP: {}", template.xp),
+        format!("Difficulty: {}", template.difficulty),
+        format!("AI: {}", codex::mob_ai_label(template)),
+        format!("Range: {}", codex::mob_attack_range(template)),
         format!("Abilities: {}", codex::describe_mob_abilities(template)),
         format!("Appears from floor {}", template.min_depth),
     ]
@@ -220,6 +225,9 @@ fn item_detail_lines(state: &RunState) -> Vec<String> {
         format!("{} {}", template.glyph, template.name),
         String::new(),
         format!("Function: {}", codex::describe_item_function(template)),
+        format!("Range: {}", codex::item_range(template)),
+        format!("Duration: {}", codex::item_duration(template)),
+        format!("Appears from floor {}", template.min_depth),
     ]
 }
 

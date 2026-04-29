@@ -24,7 +24,7 @@ pub fn draw_inventory(world: &World, buffer: &mut Buffer, cursor: usize) {
         Some(p) => p,
         None => return,
     };
-    let lines = build_lines(world, player, cursor);
+    let lines = build_lines(world, player, cursor, buffer.height() as usize);
     let start_y = (buffer.height() as usize)
         .saturating_sub(lines.len())
         / 2;
@@ -35,7 +35,12 @@ pub fn draw_inventory(world: &World, buffer: &mut Buffer, cursor: usize) {
     }
 }
 
-fn build_lines(world: &World, player: Entity, cursor: usize) -> Vec<(String, Color)> {
+fn build_lines(
+    world: &World,
+    player: Entity,
+    cursor: usize,
+    screen_rows: usize,
+) -> Vec<(String, Color)> {
     let mut out: Vec<(String, Color)> = Vec::new();
     out.push(("Inventory".to_string(), Color::Yellow));
     out.push((String::new(), Color::Reset));
@@ -50,7 +55,17 @@ fn build_lines(world: &World, player: Entity, cursor: usize) -> Vec<(String, Col
     if inv.items.is_empty() {
         out.push(("  (empty)".to_string(), Color::DarkGrey));
     }
-    for (idx, entity) in inv.items.iter().enumerate() {
+    let reserved_rows = 4usize;
+    let visible_rows = screen_rows.saturating_sub(reserved_rows).max(1);
+    let item_start = cursor.saturating_add(1).saturating_sub(visible_rows);
+    let item_end = (item_start + visible_rows).min(inv.items.len());
+    for (idx, entity) in inv
+        .items
+        .iter()
+        .enumerate()
+        .skip(item_start)
+        .take(item_end.saturating_sub(item_start))
+    {
         let name = world
             .get::<&Name>(*entity)
             .map(|n| n.0.clone())

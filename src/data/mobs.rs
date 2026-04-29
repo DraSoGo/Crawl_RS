@@ -93,11 +93,11 @@ pub const TEMPLATES: &[MobTemplate] = &[
         ..base("skittish kobold", 'k', Color::DarkRed, 6, 2, 0, 1, 7, 5, 2, 2)
     },
     MobTemplate {
-        ai: AiKind::Ranged { prefer_range: 5 },
+        ai: AiKind::Ranged { prefer_range: 2 },
         ..base("kobold archer", 'k', Color::Yellow, 6, 2, 0, 1, 8, 6, 3, 2)
     },
     MobTemplate {
-        ai: AiKind::Ranged { prefer_range: 6 },
+        ai: AiKind::Ranged { prefer_range: 2 },
         ..base("skeleton archer", 'q', Color::White, 10, 3, 1, 1, 8, 12, 4, 4)
     },
     MobTemplate {

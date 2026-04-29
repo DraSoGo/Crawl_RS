@@ -175,6 +175,23 @@ pub fn describe_mob_abilities(template: &MobTemplate) -> String {
     }
 }
 
+pub fn mob_ai_label(template: &MobTemplate) -> &'static str {
+    match template.ai {
+        AiKind::Hostile => "hostile",
+        AiKind::Sleeper { .. } => "sleeper",
+        AiKind::Fleeing { .. } => "fleeing",
+        AiKind::Ranged { .. } => "ranged",
+        AiKind::Mimic { .. } => "mimic",
+    }
+}
+
+pub fn mob_attack_range(template: &MobTemplate) -> &'static str {
+    match template.ai {
+        AiKind::Ranged { .. } => "2 tiles",
+        _ => "adjacent",
+    }
+}
+
 pub fn describe_item_function(template: &ItemTemplate) -> String {
     match template.kind {
         ItemKind::Potion(effect) => describe_potion(effect),
@@ -197,6 +214,76 @@ pub fn describe_item_function(template: &ItemTemplate) -> String {
             }
         }
         ItemKind::Corpse => "No current use.".to_string(),
+    }
+}
+
+pub fn item_range(template: &ItemTemplate) -> &'static str {
+    match template.kind {
+        ItemKind::Potion(_) => "self",
+        ItemKind::Scroll(scroll) => match scroll {
+            ScrollKind::Mapping => "whole level",
+            ScrollKind::Teleport => "self",
+            ScrollKind::Identify => "none",
+            ScrollKind::MagicMissile => "nearest mob",
+            ScrollKind::EnchantWeapon | ScrollKind::EnchantArmor => "equipped gear",
+            ScrollKind::Fear => "1-tile radius",
+            ScrollKind::Summon => "adjacent tiles",
+            ScrollKind::Light => "self",
+            ScrollKind::Recall => "self",
+        },
+        ItemKind::Weapon { .. }
+        | ItemKind::Armor { .. }
+        | ItemKind::Ring(_)
+        | ItemKind::AmuletItem(_) => "self",
+        ItemKind::Wand { .. } => "nearest mob",
+        ItemKind::Throwable(kind) => match kind {
+            ThrowableKind::OilFlask => "adjacent tiles",
+            ThrowableKind::SmokeBomb => "2-tile radius",
+        },
+        ItemKind::Food { .. } | ItemKind::Corpse => "self",
+    }
+}
+
+pub fn item_duration(template: &ItemTemplate) -> &'static str {
+    match template.kind {
+        ItemKind::Potion(effect) => match effect {
+            PotionEffect::Heal(_)
+            | PotionEffect::GreaterHeal(_)
+            | PotionEffect::FullHeal
+            | PotionEffect::MaxHpUp(_)
+            | PotionEffect::CurePoison => "instant",
+            PotionEffect::BuffAttack { turns, .. } => turns_to_label(turns),
+            PotionEffect::BuffVision { turns, .. } => turns_to_label(turns),
+        },
+        ItemKind::Scroll(scroll) => match scroll {
+            ScrollKind::Fear => "10 turns",
+            ScrollKind::Light => "50 turns",
+            ScrollKind::Mapping
+            | ScrollKind::Teleport
+            | ScrollKind::Identify
+            | ScrollKind::MagicMissile
+            | ScrollKind::EnchantWeapon
+            | ScrollKind::EnchantArmor
+            | ScrollKind::Summon
+            | ScrollKind::Recall => "instant",
+        },
+        ItemKind::Weapon { .. }
+        | ItemKind::Armor { .. }
+        | ItemKind::Ring(_)
+        | ItemKind::AmuletItem(_) => "while equipped",
+        ItemKind::Wand { .. } => "instant",
+        ItemKind::Throwable(kind) => match kind {
+            ThrowableKind::OilFlask => "instant",
+            ThrowableKind::SmokeBomb => "5 turns",
+        },
+        ItemKind::Food { .. } | ItemKind::Corpse => "instant",
+    }
+}
+
+fn turns_to_label(turns: i32) -> &'static str {
+    match turns {
+        50 => "50 turns",
+        _ => "timed",
     }
 }
 
@@ -372,6 +459,8 @@ mod tests {
         assert!(describe_item_function(weapon).contains("+2 attack"));
         assert!(describe_item_function(wand).contains("6-10 damage"));
         assert!(describe_item_function(identify).contains("reveal the whole level"));
+        assert_eq!(item_range(wand), "nearest mob");
+        assert_eq!(item_duration(wand), "instant");
         assert_eq!(
             describe_item_function(&ItemTemplate {
                 name: "scroll of identify",
