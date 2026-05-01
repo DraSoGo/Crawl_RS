@@ -9,7 +9,7 @@ A classic ASCII roguelike in pure terminal Rust. Procedurally generated
 dungeons, turn-based combat, permadeath. Runs over SSH; scales from a phone
 shell to a 4K terminal.
 
-Current version: `0.1.0`
+Current version: `0.2.0`
 
 ---
 
