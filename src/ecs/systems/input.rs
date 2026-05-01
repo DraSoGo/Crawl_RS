@@ -21,6 +21,8 @@ pub enum PlayerAction {
     OpenStatus,
     /// Open the help screen — does not consume a turn.
     OpenHelp,
+    /// Open the floor-threats summary — does not consume a turn.
+    OpenThreats,
     /// Descend a flight of stairs.
     Descend,
     /// Key was not bound to anything; no turn elapsed.
@@ -54,6 +56,7 @@ pub fn handle_key(world: &mut World, key: KeyEvent) -> PlayerAction {
         KeyCode::Char('b') => PlayerAction::OpenBook,
         KeyCode::Char('k') => PlayerAction::OpenStatus,
         KeyCode::Char('h') => PlayerAction::OpenHelp,
+        KeyCode::Char('t') => PlayerAction::OpenThreats,
         KeyCode::Char('>') => PlayerAction::Descend,
         _ => PlayerAction::None,
     }

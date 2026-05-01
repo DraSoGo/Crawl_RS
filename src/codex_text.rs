@@ -73,9 +73,12 @@ pub fn mob_ai_label(template: &MobTemplate) -> &'static str {
 }
 
 pub fn mob_attack_range(template: &MobTemplate) -> String {
+    // Always report the tile count so the codex line reads consistently
+    // alongside item ranges. Melee mobs hit at distance 1 (adjacent);
+    // ranged mobs hit at the configured ranged-attack range.
     match template.ai {
         AiKind::Ranged { .. } => format!("{} tiles", config::WORLD.ranged_attack_range),
-        _ => "adjacent".to_string(),
+        _ => "1 tile (adjacent)".to_string(),
     }
 }
 
@@ -104,28 +107,42 @@ pub fn describe_item_function(template: &ItemTemplate) -> String {
     }
 }
 
-pub fn item_range(template: &ItemTemplate) -> &'static str {
+/// Display label for an item's "Range" line in the codex.
+///
+/// Two buckets:
+/// * Self-targeted, equip-only, or passive items → `-`. They never strike
+///   a mob, so a tile count would be misleading.
+/// * Mob-attacking items → tile count, with the **minimum 2-tile rule**: any
+///   item that damages mobs must reach at least 2 tiles. A 1-tile attack
+///   item would put the player on the wrong side of the bump-attack rule
+///   (you swing, the mob retaliates next turn). The throwables below are
+///   tuned to a 2-tile burst in `inventory::consume::throw_item` to honour
+///   this; the wand/missile auto-targets the nearest visible mob, which is
+///   always at least 2 tiles away because step 1 = melee (use weapon).
+pub fn item_range(template: &ItemTemplate) -> String {
     match template.kind {
-        ItemKind::Potion(_) => "self",
-        ItemKind::Scroll(ScrollKind::Mapping) => "whole floor",
-        ItemKind::Scroll(ScrollKind::Teleport) => "self",
-        ItemKind::Scroll(ScrollKind::Identify) => "none",
-        ItemKind::Scroll(ScrollKind::MagicMissile) => "nearest mob",
-        ItemKind::Scroll(ScrollKind::EnchantWeapon) => "equipped weapon",
-        ItemKind::Scroll(ScrollKind::EnchantArmor) => "equipped armor",
-        ItemKind::Scroll(ScrollKind::Fear) => "nearby mobs",
-        ItemKind::Scroll(ScrollKind::Summon) => "nearby floor",
-        ItemKind::Scroll(ScrollKind::Light) => "self",
-        ItemKind::Scroll(ScrollKind::Recall) => "self",
-        ItemKind::Weapon { .. } => "melee",
-        ItemKind::Armor { .. } => "self",
-        ItemKind::Ring(_) => "self",
-        ItemKind::AmuletItem(_) => "self",
-        ItemKind::Wand { .. } => "nearest mob",
-        ItemKind::Throwable(ThrowableKind::OilFlask) => "adjacent burst",
-        ItemKind::Throwable(ThrowableKind::SmokeBomb) => "2-tile burst",
-        ItemKind::Food { .. } => "self",
-        ItemKind::Corpse => "self",
+        // Self-target / equip / passive — no mob targeting from this slot.
+        ItemKind::Potion(_)
+        | ItemKind::Armor { .. }
+        | ItemKind::Ring(_)
+        | ItemKind::AmuletItem(_)
+        | ItemKind::Weapon { .. }
+        | ItemKind::Food { .. }
+        | ItemKind::Corpse => "-".to_string(),
+        ItemKind::Scroll(ScrollKind::Mapping)
+        | ItemKind::Scroll(ScrollKind::Teleport)
+        | ItemKind::Scroll(ScrollKind::Identify)
+        | ItemKind::Scroll(ScrollKind::EnchantWeapon)
+        | ItemKind::Scroll(ScrollKind::EnchantArmor)
+        | ItemKind::Scroll(ScrollKind::Light)
+        | ItemKind::Scroll(ScrollKind::Recall)
+        | ItemKind::Scroll(ScrollKind::Summon) => "-".to_string(),
+        // Mob-attacking — clamp to >= 2 tiles per the min-range rule.
+        ItemKind::Scroll(ScrollKind::MagicMissile) => "any visible mob".to_string(),
+        ItemKind::Scroll(ScrollKind::Fear) => "8 tiles around you".to_string(),
+        ItemKind::Wand { .. } => "any visible mob".to_string(),
+        ItemKind::Throwable(ThrowableKind::OilFlask) => "2 tiles around you".to_string(),
+        ItemKind::Throwable(ThrowableKind::SmokeBomb) => "2 tiles around you".to_string(),
     }
 }
 
@@ -261,7 +278,7 @@ mod tests {
 
         assert!(describe_item_function(wand).contains("6-10 damage"));
         assert!(describe_item_function(mapping).contains("reveal the whole level"));
-        assert_eq!(item_range(wand), "nearest mob");
+        assert_eq!(item_range(wand), "any visible mob");
         assert_eq!(item_duration(wand), "instant");
     }
 

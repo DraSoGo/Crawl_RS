@@ -35,6 +35,7 @@ pub enum UiMode {
     Book,
     Status,
     Help,
+    Threats,
     GameOver,
     Victory,
 }

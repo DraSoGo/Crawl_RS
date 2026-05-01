@@ -250,6 +250,14 @@ fn handle_run_key(
                 Ok(RunOutcome::None)
             }
         }
+        UiMode::Threats => {
+            if handle_threats_key(key) {
+                state.mode = UiMode::Playing;
+                Ok(RunOutcome::Redraw)
+            } else {
+                Ok(RunOutcome::None)
+            }
+        }
         UiMode::Playing => match handle_key(&mut state.world, key) {
             PlayerAction::Quit => {
                 save_run(state);
@@ -269,6 +277,10 @@ fn handle_run_key(
             }
             PlayerAction::OpenHelp => {
                 state.mode = UiMode::Help;
+                Ok(RunOutcome::Redraw)
+            }
+            PlayerAction::OpenThreats => {
+                state.mode = UiMode::Threats;
                 Ok(RunOutcome::Redraw)
             }
             PlayerAction::Descend => {
@@ -291,6 +303,10 @@ fn handle_status_key(key: KeyEvent) -> bool {
 
 fn handle_help_key(key: KeyEvent) -> bool {
     matches!(key.code, KeyCode::Char('h') | KeyCode::Esc | KeyCode::Enter)
+}
+
+fn handle_threats_key(key: KeyEvent) -> bool {
+    matches!(key.code, KeyCode::Char('t') | KeyCode::Esc | KeyCode::Enter)
 }
 
 fn handle_inventory_key(state: &mut RunState, key: KeyEvent) -> Option<bool> {

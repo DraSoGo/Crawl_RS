@@ -9,7 +9,7 @@ use crate::run_state::{
     player_combat, player_hp, player_kills, player_level, player_xp, RunState, UiMode,
     HUD_ROWS, LOG_ROWS, RESERVED_ROWS,
 };
-use crate::ui::{book, help, menus, status, Buffer, MessageLog, Severity};
+use crate::ui::{book, help, menus, status, threats, Buffer, MessageLog, Severity};
 
 pub fn draw_run(buffer: &mut Buffer, state: &RunState) {
     match state.mode {
@@ -20,6 +20,7 @@ pub fn draw_run(buffer: &mut Buffer, state: &RunState) {
         UiMode::Book => book::draw_book(state, buffer),
         UiMode::Status => status::draw_status(state, buffer),
         UiMode::Help => help::draw_help(state, buffer),
+        UiMode::Threats => threats::draw_threats(state, buffer),
         UiMode::GameOver => draw_death_screen(buffer, state),
         UiMode::Victory => draw_victory_screen(buffer, state),
     }

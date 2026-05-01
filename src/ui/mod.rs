@@ -5,6 +5,7 @@ pub mod layout;
 pub mod menus;
 pub mod messages;
 pub mod status;
+pub mod threats;
 pub mod title;
 
 pub use buffer::{Buffer, Cell};

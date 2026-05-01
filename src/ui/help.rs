@@ -11,6 +11,7 @@ const HELP_ROWS: &[(&str, &str)] = &[
     ("b", "open book"),
     ("k", "open status"),
     ("h", "open help"),
+    ("t", "open floor-threats summary"),
     (">", "descend stairs"),
     ("esc", "save and quit"),
     ("inventory: up/down", "select item"),

@@ -77,9 +77,9 @@ pub const PROGRESSION: ProgressionConfig = ProgressionConfig {
 pub const WORLD: WorldConfig = WorldConfig {
     final_depth: 10,
     floor_difficulty_base: 10,
-    floor_difficulty_per_depth: 5,
+    floor_difficulty_per_depth: 10,
     depth_hp_scale: 0.25,
-    depth_attack_scale: 0.25,
+    depth_attack_scale: 0.251,
     ranged_attack_range: 2,
 };
 

@@ -86,11 +86,14 @@ pub fn throw_item(
     };
     match t {
         ThrowableKind::OilFlask => {
+            // 2-tile burst: any mob who could melee the player back next
+            // turn (range 1) would put us in the bump-attack lose state, so
+            // the codex advertises "2 tiles" and the gameplay matches.
             let mob_entities: Vec<Entity> = world
                 .query::<(&Mob, &Position)>()
                 .iter()
                 .filter(|(_, (_, p))| {
-                    (p.x - pos.x).abs() <= 1 && (p.y - pos.y).abs() <= 1
+                    (p.x - pos.x).abs() <= 2 && (p.y - pos.y).abs() <= 2
                 })
                 .map(|(e, _)| e)
                 .collect();
