@@ -9,9 +9,9 @@ use crate::ecs::components::{
 use crate::map::Map;
 use crate::ui::messages::Severity;
 
-/// Bumped every time the snapshot schema changes incompatibly. v4 removes the
-/// energy scheduler and stores move-based stats instead.
-pub const SAVE_VERSION: u32 = 4;
+/// Bumped every time the snapshot schema changes incompatibly. v5 adds new
+/// item variants for the extended 20-floor content curve.
+pub const SAVE_VERSION: u32 = 5;
 pub const SAVE_FILENAME: &str = "save.bin";
 
 #[derive(Serialize, Deserialize, Debug)]

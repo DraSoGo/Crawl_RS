@@ -304,10 +304,13 @@ pub enum ScrollKind {
     Teleport,
     Identify,
     MagicMissile,
+    ChainLightning,
     EnchantWeapon,
     EnchantArmor,
     Fear,
+    GreaterFear,
     Summon,
+    Legion,
     Light,
     Recall,
 }
@@ -317,6 +320,7 @@ pub enum WandKind {
     Fire,
     Cold,
     Lightning,
+    Storms,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

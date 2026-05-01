@@ -27,8 +27,14 @@ pub fn zap_wand<R: Rng>(
         WandKind::Fire => rng.gen_range(6..=10),
         WandKind::Cold => rng.gen_range(5..=8),
         WandKind::Lightning => rng.gen_range(8..=12),
+        WandKind::Storms => rng.gen_range(9..=13),
     };
-    zap_nearest(world, log, player, damage, &format!("the {item_name}"));
+    match kind {
+        WandKind::Storms => {
+            zap_nearest_n(world, log, player, damage, 2, &format!("the {item_name}"));
+        }
+        _ => zap_nearest(world, log, player, damage, &format!("the {item_name}")),
+    }
     if let Ok(mut item_comp) = world.get::<&mut Item>(item) {
         if let ItemKind::Wand { ref mut charges, .. } = item_comp.kind {
             *charges -= 1;
@@ -43,26 +49,64 @@ pub(super) fn zap_nearest(
     damage: i32,
     label: &str,
 ) {
-    let pos = match world.get::<&Position>(player) {
-        Ok(p) => *p,
-        Err(_) => return,
-    };
-    let mut nearest: Option<(Entity, i32)> = None;
-    for (entity, (_, mob_pos)) in world.query::<(&Mob, &Position)>().iter() {
-        let dx = mob_pos.x - pos.x;
-        let dy = mob_pos.y - pos.y;
-        let dist = dx * dx + dy * dy;
-        if nearest.map_or(true, |(_, d)| dist < d) {
-            nearest = Some((entity, dist));
-        }
-    }
-    let target = match nearest {
-        Some((e, _)) => e,
+    let targets = nearest_mobs(world, player, 1);
+    let target = match targets.first().copied() {
+        Some(entity) => entity,
         None => {
             log.info("you find no target.");
             return;
         }
     };
+    apply_zap(world, log, target, damage, label);
+}
+
+pub(super) fn zap_nearest_n(
+    world: &mut World,
+    log: &mut MessageLog,
+    player: Entity,
+    damage: i32,
+    count: usize,
+    label: &str,
+) {
+    let targets = nearest_mobs(world, player, count);
+    if targets.is_empty() {
+        log.info("you find no target.");
+        return;
+    }
+    for target in targets {
+        apply_zap(world, log, target, damage, label);
+    }
+}
+
+fn nearest_mobs(world: &World, player: Entity, limit: usize) -> Vec<Entity> {
+    let pos = match world.get::<&Position>(player) {
+        Ok(p) => *p,
+        Err(_) => return Vec::new(),
+    };
+    let mut nearest: Vec<(Entity, i32)> = world
+        .query::<(&Mob, &Position)>()
+        .iter()
+        .map(|(entity, (_, mob_pos))| {
+            let dx = mob_pos.x - pos.x;
+            let dy = mob_pos.y - pos.y;
+            (entity, dx * dx + dy * dy)
+        })
+        .collect();
+    nearest.sort_by_key(|(_, dist)| *dist);
+    nearest
+        .into_iter()
+        .take(limit)
+        .map(|(entity, _)| entity)
+        .collect()
+}
+
+fn apply_zap(
+    world: &mut World,
+    log: &mut MessageLog,
+    target: Entity,
+    damage: i32,
+    label: &str,
+) {
     let target_name = world
         .get::<&Name>(target)
         .map(|n| n.0.clone())

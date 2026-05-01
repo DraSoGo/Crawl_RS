@@ -5,6 +5,43 @@ All notable changes to crawl-rs are recorded here. Format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-28
+
+Extended the dungeon from 10 floors to 20 and added a new late-game
+content curve to support the longer run.
+
+### Added
+- Deep-floor mob roster for floors 11-20: `crypt knight`, `ash hound`,
+  `gargoyle`, `vampire`, `warlock`, `basilisk`, `nightgaunt`,
+  `bone colossus`, `void priest`, and `ancient drake`.
+- Deep-floor item roster: `potion of giant strength`, `potion of far sight`,
+  `potion of fortitude`, `scroll of chain lightning`,
+  `scroll of greater fear`, `scroll of legion`, `runed greatsword`,
+  `obsidian blade`, `gothic plate`, `dragon scale armor`,
+  `ring of regen`, and `wand of storms`.
+- New consumable behaviors for chained ranged damage, stronger fear,
+  larger allied summons, and multi-target wand zaps.
+
+### Changed
+- Final dungeon depth increased from 10 to 20 floors.
+- Depth-based mob HP/attack scaling retuned for a 20-floor game so late
+  floors remain difficult without runaway stat inflation.
+- Existing late-game mobs redistributed deeper into the dungeon to make
+  the new floor range distinct from the original 10-floor curve.
+- Mob and item selection now bias toward more recently unlocked depth
+  tiers so deep floors surface late-game content more reliably.
+- README and project guidance updated to document the 20-floor run.
+
+### Fixed
+- Save schema bumped to `SAVE_VERSION = 5` so the new item variants are
+  versioned correctly instead of loading through the old format.
+- Summon scroll placement now skips blocked tiles instead of forcing new
+  allies onto occupied cells.
+
+### Tests
+- Full `cargo test` suite passes after the content and balance expansion
+  (`49` tests).
+
 ## [0.1.0] - 2026-04-28
 
 Initial release. Full Phase 1–11 build per the project plan.

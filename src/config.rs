@@ -58,8 +58,8 @@ pub const UI: UiConfig = UiConfig {
 pub const PLAYER: PlayerConfig = PlayerConfig {
     fov_radius: 8,
     base_hp: 20,
-    base_attack: 4,
-    base_defense: 1,
+    base_attack: 3,
+    base_defense: 0,
     base_move: 1,
     descent_heal: 5,
     start_satiation: 800,
@@ -75,11 +75,11 @@ pub const PROGRESSION: ProgressionConfig = ProgressionConfig {
 };
 
 pub const WORLD: WorldConfig = WorldConfig {
-    final_depth: 10,
-    floor_difficulty_base: 10,
+    final_depth: 20,
+    floor_difficulty_base: 20,
     floor_difficulty_per_depth: 10,
-    depth_hp_scale: 0.25,
-    depth_attack_scale: 0.251,
+    depth_hp_scale: 0.12,
+    depth_attack_scale: 0.12,
     ranged_attack_range: 2,
 };
 

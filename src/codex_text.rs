@@ -136,10 +136,15 @@ pub fn item_range(template: &ItemTemplate) -> String {
         | ItemKind::Scroll(ScrollKind::EnchantArmor)
         | ItemKind::Scroll(ScrollKind::Light)
         | ItemKind::Scroll(ScrollKind::Recall)
-        | ItemKind::Scroll(ScrollKind::Summon) => "-".to_string(),
+        | ItemKind::Scroll(ScrollKind::Summon)
+        | ItemKind::Scroll(ScrollKind::Legion) => "-".to_string(),
         // Mob-attacking — clamp to >= 2 tiles per the min-range rule.
         ItemKind::Scroll(ScrollKind::MagicMissile) => "any visible mob".to_string(),
-        ItemKind::Scroll(ScrollKind::Fear) => "8 tiles around you".to_string(),
+        ItemKind::Scroll(ScrollKind::ChainLightning) => "up to 3 visible mobs".to_string(),
+        ItemKind::Scroll(ScrollKind::Fear) | ItemKind::Scroll(ScrollKind::GreaterFear) => {
+            "8 tiles around you".to_string()
+        }
+        ItemKind::Wand { kind: WandKind::Storms, .. } => "up to 2 visible mobs".to_string(),
         ItemKind::Wand { .. } => "any visible mob".to_string(),
         ItemKind::Throwable(ThrowableKind::OilFlask) => "2 tiles around you".to_string(),
         ItemKind::Throwable(ThrowableKind::SmokeBomb) => "2 tiles around you".to_string(),
@@ -161,10 +166,13 @@ pub fn item_duration(template: &ItemTemplate) -> &'static str {
         ItemKind::Scroll(ScrollKind::Teleport) => "instant",
         ItemKind::Scroll(ScrollKind::Identify) => "none",
         ItemKind::Scroll(ScrollKind::MagicMissile) => "instant",
+        ItemKind::Scroll(ScrollKind::ChainLightning) => "instant",
         ItemKind::Scroll(ScrollKind::EnchantWeapon) => "permanent",
         ItemKind::Scroll(ScrollKind::EnchantArmor) => "permanent",
         ItemKind::Scroll(ScrollKind::Fear) => "10 turns",
+        ItemKind::Scroll(ScrollKind::GreaterFear) => "16 turns",
         ItemKind::Scroll(ScrollKind::Summon) => "until allies die",
+        ItemKind::Scroll(ScrollKind::Legion) => "until allies die",
         ItemKind::Scroll(ScrollKind::Light) => "100 turns",
         ItemKind::Scroll(ScrollKind::Recall) => "instant",
         ItemKind::Weapon { .. } => "while equipped",
@@ -210,10 +218,13 @@ fn describe_scroll(scroll: ScrollKind) -> &'static str {
         ScrollKind::Teleport => "Read to teleport to a random tile.",
         ScrollKind::Identify => "Read for no effect right now.",
         ScrollKind::MagicMissile => "Read to zap the nearest mob for 6-10 damage.",
+        ScrollKind::ChainLightning => "Read to blast up to 3 nearby mobs for 8 damage.",
         ScrollKind::EnchantWeapon => "Read to enchant your equipped weapon by +1 attack.",
         ScrollKind::EnchantArmor => "Read to enchant your equipped armor by +1 defense.",
         ScrollKind::Fear => "Read to frighten nearby mobs for 10 turns.",
+        ScrollKind::GreaterFear => "Read to terrify nearby mobs for 16 turns.",
         ScrollKind::Summon => "Read to summon nearby allied creatures.",
+        ScrollKind::Legion => "Read to summon a larger allied pack.",
         ScrollKind::Light => "Read to extend sight for 100 turns.",
         ScrollKind::Recall => "Read to teleport back to the up-stair.",
     }
@@ -239,6 +250,9 @@ fn describe_wand(kind: WandKind, charges: i32) -> String {
         WandKind::Cold => format!("Zap the nearest mob for 5-8 damage ({charges} charges)."),
         WandKind::Lightning => {
             format!("Zap the nearest mob for 8-12 damage ({charges} charges).")
+        }
+        WandKind::Storms => {
+            format!("Arc 9-13 damage into up to 2 nearby mobs ({charges} charges).")
         }
     }
 }

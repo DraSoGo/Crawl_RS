@@ -146,7 +146,7 @@ Killing mobs and selling items both award XP. Each level requires
 ## How it works
 
 - ECS via [`hecs`](https://crates.io/crates/hecs)
-- BSP dungeon generation per level (10 levels, increasing density)
+- BSP dungeon generation per level (20 levels, increasing density)
 - Recursive shadowcasting FOV (8 octants, radius 8) with memory tiles
 - Round-based movement (`move_tiles` per round)
 - Combat damage: `max(1, 1d6 + atk - def)`
@@ -158,7 +158,7 @@ Killing mobs and selling items both award XP. Each level requires
 
 ## Win condition
 
-Reach depth 10 and pick up the Amulet of Yendor. Permadeath: you die, the
+Reach depth 20 and pick up the Amulet of Yendor. Permadeath: you die, the
 save file is gone, and your score is recorded in the high-score table.
 
 ## Notable seeds

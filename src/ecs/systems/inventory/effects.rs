@@ -7,7 +7,7 @@ use crate::ecs::components::{
     Ai, BlocksTile, Equipment, Faction, FieldOfView, Item, ItemKind, Mob, Name, Position,
     PotionEffect, Renderable, ScrollKind, Stats, StatusEffects,
 };
-use crate::ecs::systems::inventory::consume::zap_nearest;
+use crate::ecs::systems::inventory::consume::{zap_nearest, zap_nearest_n};
 use crate::map::{Map, Tile};
 use crate::ui::MessageLog;
 
@@ -137,10 +137,15 @@ pub fn apply_scroll<R: Rng>(
         ScrollKind::MagicMissile => {
             zap_nearest(world, log, player, 6, "magic missile");
         }
+        ScrollKind::ChainLightning => {
+            zap_nearest_n(world, log, player, 8, 3, "chain lightning");
+        }
         ScrollKind::EnchantWeapon => enchant_weapon(world, log, player, item_name),
         ScrollKind::EnchantArmor => enchant_armor(world, log, player, item_name),
         ScrollKind::Fear => apply_fear_aura(world, log, player, 10),
-        ScrollKind::Summon => summon_allies(world, log, rng, player),
+        ScrollKind::GreaterFear => apply_fear_aura(world, log, player, 16),
+        ScrollKind::Summon => summon_allies(world, log, rng, player, "rat", 2),
+        ScrollKind::Legion => summon_allies(world, log, rng, player, "jackal", 4),
         ScrollKind::Light => {
             // Only bump radius if no light effect is active; otherwise
             // re-reading the scroll would stack +4 each time while the
@@ -259,7 +264,14 @@ fn apply_fear_aura(world: &mut World, log: &mut MessageLog, player: Entity, turn
     }
 }
 
-fn summon_allies<R: Rng>(world: &mut World, log: &mut MessageLog, rng: &mut R, player: Entity) {
+fn summon_allies<R: Rng>(
+    world: &mut World,
+    log: &mut MessageLog,
+    rng: &mut R,
+    player: Entity,
+    template_name: &str,
+    count: usize,
+) {
     let pos = match world.get::<&Position>(player) {
         Ok(p) => *p,
         Err(_) => return,
@@ -269,12 +281,16 @@ fn summon_allies<R: Rng>(world: &mut World, log: &mut MessageLog, rng: &mut R, p
         (-1, 0),           (1, 0),
         (-1, 1),  (0, 1),  (1, 1),
     ];
-    let template = crate::data::mobs::by_name("rat").unwrap_or(&crate::data::mobs::TEMPLATES[0]);
+    let template = crate::data::mobs::by_name(template_name)
+        .unwrap_or(&crate::data::mobs::TEMPLATES[0]);
     let mut spawned = 0;
-    for _ in 0..2 {
+    for _ in 0..count {
         let (dx, dy) = dirs[rng.gen_range(0..dirs.len())];
         let nx = pos.x + dx;
         let ny = pos.y + dy;
+        if tile_has_blocker(world, nx, ny) {
+            continue;
+        }
         world.spawn((
             Position { x: nx, y: ny },
             Renderable::new(template.glyph, template.fg, crossterm::style::Color::Reset, 100),
@@ -294,6 +310,13 @@ fn summon_allies<R: Rng>(world: &mut World, log: &mut MessageLog, rng: &mut R, p
         spawned += 1;
     }
     log.status(format!("you summon {spawned} allies."));
+}
+
+fn tile_has_blocker(world: &World, x: i32, y: i32) -> bool {
+    world
+        .query::<(&Position, &BlocksTile)>()
+        .iter()
+        .any(|(_, (pos, _))| pos.x == x && pos.y == y)
 }
 
 fn recall_to_up_stair(

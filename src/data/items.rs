@@ -15,319 +15,290 @@ pub struct ItemTemplate {
     pub min_depth: u32,
 }
 
-pub const TEMPLATES: &[ItemTemplate] = &[
-    // ---- Potions -------------------------------------------------------
+const fn potion(
+    name: &'static str,
+    fg: Color,
+    effect: PotionEffect,
+    min_depth: u32,
+) -> ItemTemplate {
     ItemTemplate {
-        name: "potion of healing",
+        name,
         glyph: '!',
-        fg: Color::Magenta,
-        kind: ItemKind::Potion(PotionEffect::Heal(8)),
-        min_depth: 1,
-    },
+        fg,
+        kind: ItemKind::Potion(effect),
+        min_depth,
+    }
+}
+
+const fn scroll(
+    name: &'static str,
+    fg: Color,
+    kind: ScrollKind,
+    min_depth: u32,
+) -> ItemTemplate {
     ItemTemplate {
-        name: "potion of greater healing",
-        glyph: '!',
-        fg: Color::Red,
-        kind: ItemKind::Potion(PotionEffect::GreaterHeal(18)),
-        min_depth: 3,
-    },
-    ItemTemplate {
-        name: "potion of full healing",
-        glyph: '!',
-        fg: Color::White,
-        kind: ItemKind::Potion(PotionEffect::FullHeal),
-        min_depth: 5,
-    },
-    ItemTemplate {
-        name: "potion of vitality",
-        glyph: '!',
-        fg: Color::Yellow,
-        kind: ItemKind::Potion(PotionEffect::MaxHpUp(2)),
-        min_depth: 4,
-    },
-    ItemTemplate {
-        name: "potion of strength",
-        glyph: '!',
-        fg: Color::DarkRed,
-        kind: ItemKind::Potion(PotionEffect::BuffAttack { amount: 2, turns: 50 }),
-        min_depth: 2,
-    },
-    ItemTemplate {
-        name: "potion of vision",
-        glyph: '!',
-        fg: Color::Blue,
-        kind: ItemKind::Potion(PotionEffect::BuffVision { amount: 4, turns: 50 }),
-        min_depth: 2,
-    },
-    ItemTemplate {
-        name: "potion of cure poison",
-        glyph: '!',
-        fg: Color::Green,
-        kind: ItemKind::Potion(PotionEffect::CurePoison),
-        min_depth: 2,
-    },
-    // ---- Scrolls -------------------------------------------------------
-    ItemTemplate {
-        name: "scroll of mapping",
+        name,
         glyph: '?',
-        fg: Color::Cyan,
-        kind: ItemKind::Scroll(ScrollKind::Mapping),
-        min_depth: 1,
-    },
+        fg,
+        kind: ItemKind::Scroll(kind),
+        min_depth,
+    }
+}
+
+const fn weapon(
+    name: &'static str,
+    fg: Color,
+    attack_bonus: i32,
+    min_depth: u32,
+) -> ItemTemplate {
     ItemTemplate {
-        name: "scroll of teleport",
-        glyph: '?',
-        fg: Color::Blue,
-        kind: ItemKind::Scroll(ScrollKind::Teleport),
-        min_depth: 2,
-    },
-    // ItemTemplate {
-    //     name: "scroll of identify",
-    //     glyph: '?',
-    //     fg: Color::White,
-    //     kind: ItemKind::Scroll(ScrollKind::Identify),
-    //     min_depth: 1,
-    // },
-    ItemTemplate {
-        name: "scroll of magic missile",
-        glyph: '?',
-        fg: Color::Red,
-        kind: ItemKind::Scroll(ScrollKind::MagicMissile),
-        min_depth: 2,
-    },
-    ItemTemplate {
-        name: "scroll of enchant weapon",
-        glyph: '?',
-        fg: Color::Yellow,
-        kind: ItemKind::Scroll(ScrollKind::EnchantWeapon),
-        min_depth: 3,
-    },
-    ItemTemplate {
-        name: "scroll of enchant armor",
-        glyph: '?',
-        fg: Color::Yellow,
-        kind: ItemKind::Scroll(ScrollKind::EnchantArmor),
-        min_depth: 3,
-    },
-    ItemTemplate {
-        name: "scroll of fear",
-        glyph: '?',
-        fg: Color::Magenta,
-        kind: ItemKind::Scroll(ScrollKind::Fear),
-        min_depth: 4,
-    },
-    ItemTemplate {
-        name: "scroll of summon",
-        glyph: '?',
-        fg: Color::Green,
-        kind: ItemKind::Scroll(ScrollKind::Summon),
-        min_depth: 4,
-    },
-    ItemTemplate {
-        name: "scroll of light",
-        glyph: '?',
-        fg: Color::DarkYellow,
-        kind: ItemKind::Scroll(ScrollKind::Light),
-        min_depth: 1,
-    },
-    ItemTemplate {
-        name: "scroll of recall",
-        glyph: '?',
-        fg: Color::DarkCyan,
-        kind: ItemKind::Scroll(ScrollKind::Recall),
-        min_depth: 3,
-    },
-    // ---- Weapons -------------------------------------------------------
-    // ItemTemplate {
-    //     name: "club",
-    //     glyph: '/',
-    //     fg: Color::DarkYellow,
-    //     kind: ItemKind::Weapon { attack_bonus: 0 },
-    //     min_depth: 1,
-    // },
-    ItemTemplate {
-        name: "iron dagger",
+        name,
         glyph: '/',
-        fg: Color::White,
-        kind: ItemKind::Weapon { attack_bonus: 1 },
-        min_depth: 1,
-    },
+        fg,
+        kind: ItemKind::Weapon { attack_bonus },
+        min_depth,
+    }
+}
+
+const fn armor(
+    name: &'static str,
+    fg: Color,
+    defense_bonus: i32,
+    min_depth: u32,
+) -> ItemTemplate {
     ItemTemplate {
-        name: "short sword",
-        glyph: '/',
-        fg: Color::White,
-        kind: ItemKind::Weapon { attack_bonus: 2 },
-        min_depth: 2,
-    },
-    ItemTemplate {
-        name: "iron sword",
-        glyph: '/',
-        fg: Color::White,
-        kind: ItemKind::Weapon { attack_bonus: 3 },
-        min_depth: 3,
-    },
-    ItemTemplate {
-        name: "war hammer",
-        glyph: '/',
-        fg: Color::Grey,
-        kind: ItemKind::Weapon { attack_bonus: 4 },
-        min_depth: 4,
-    },
-    ItemTemplate {
-        name: "battle axe",
-        glyph: '/',
-        fg: Color::DarkGrey,
-        kind: ItemKind::Weapon { attack_bonus: 4 },
-        min_depth: 4,
-    },
-    ItemTemplate {
-        name: "elven blade",
-        glyph: '/',
-        fg: Color::Green,
-        kind: ItemKind::Weapon { attack_bonus: 3 },
-        min_depth: 3,
-    },
-    ItemTemplate {
-        name: "greatsword",
-        glyph: '/',
-        fg: Color::White,
-        kind: ItemKind::Weapon { attack_bonus: 5 },
-        min_depth: 6,
-    },
-    ItemTemplate {
-        name: "enchanted longsword",
-        glyph: '/',
-        fg: Color::Cyan,
-        kind: ItemKind::Weapon { attack_bonus: 6 },
-        min_depth: 8,
-    },
-    // ---- Armor ---------------------------------------------------------
-    ItemTemplate {
-        name: "leather armor",
+        name,
         glyph: '[',
-        fg: Color::DarkYellow,
-        kind: ItemKind::Armor { defense_bonus: 1 },
-        min_depth: 1,
-    },
+        fg,
+        kind: ItemKind::Armor { defense_bonus },
+        min_depth,
+    }
+}
+
+const fn ring(
+    name: &'static str,
+    fg: Color,
+    effect: RingEffect,
+    min_depth: u32,
+) -> ItemTemplate {
     ItemTemplate {
-        name: "studded leather",
-        glyph: '[',
-        fg: Color::DarkYellow,
-        kind: ItemKind::Armor { defense_bonus: 1 },
-        min_depth: 1,
-    },
-    ItemTemplate {
-        name: "ring mail",
-        glyph: '[',
-        fg: Color::Grey,
-        kind: ItemKind::Armor { defense_bonus: 2 },
-        min_depth: 3,
-    },
-    ItemTemplate {
-        name: "chain mail",
-        glyph: '[',
-        fg: Color::Grey,
-        kind: ItemKind::Armor { defense_bonus: 2 },
-        min_depth: 4,
-    },
-    ItemTemplate {
-        name: "mythril chain",
-        glyph: '[',
-        fg: Color::Cyan,
-        kind: ItemKind::Armor { defense_bonus: 3 },
-        min_depth: 6,
-    },
-    ItemTemplate {
-        name: "plate mail",
-        glyph: '[',
-        fg: Color::White,
-        kind: ItemKind::Armor { defense_bonus: 4 },
-        min_depth: 7,
-    },
-    // ---- Rings ---------------------------------------------------------
-    // ItemTemplate {
-    //     name: "ring of regen",
-    //     glyph: '=',
-    //     fg: Color::Green,
-    //     kind: ItemKind::Ring(RingEffect::Regen),
-    //     min_depth: 4,
-    // },
-    ItemTemplate {
-        name: "ring of protection",
+        name,
         glyph: '=',
-        fg: Color::Cyan,
-        kind: ItemKind::Ring(RingEffect::Protection),
-        min_depth: 3,
-    },
+        fg,
+        kind: ItemKind::Ring(effect),
+        min_depth,
+    }
+}
+
+const fn amulet(
+    name: &'static str,
+    fg: Color,
+    effect: AmuletEffect,
+    min_depth: u32,
+) -> ItemTemplate {
     ItemTemplate {
-        name: "ring of vision",
-        glyph: '=',
-        fg: Color::Yellow,
-        kind: ItemKind::Ring(RingEffect::Vision),
-        min_depth: 4,
-    },
-    // ---- Amulets -------------------------------------------------------
-    ItemTemplate {
-        name: "amulet of teleport control",
+        name,
         glyph: '"',
-        fg: Color::Magenta,
-        kind: ItemKind::AmuletItem(AmuletEffect::TeleportControl),
-        min_depth: 6,
-    },
-    // ---- Wands ---------------------------------------------------------
+        fg,
+        kind: ItemKind::AmuletItem(effect),
+        min_depth,
+    }
+}
+
+const fn wand(
+    name: &'static str,
+    fg: Color,
+    kind: WandKind,
+    charges: i32,
+    min_depth: u32,
+) -> ItemTemplate {
     ItemTemplate {
-        name: "wand of fire",
+        name,
         glyph: '/',
-        fg: Color::Red,
-        kind: ItemKind::Wand { kind: WandKind::Fire, charges: 5 },
-        min_depth: 3,
-    },
+        fg,
+        kind: ItemKind::Wand { kind, charges },
+        min_depth,
+    }
+}
+
+const fn throwable(
+    name: &'static str,
+    fg: Color,
+    kind: ThrowableKind,
+    min_depth: u32,
+) -> ItemTemplate {
     ItemTemplate {
-        name: "wand of cold",
-        glyph: '/',
-        fg: Color::Cyan,
-        kind: ItemKind::Wand { kind: WandKind::Cold, charges: 5 },
-        min_depth: 3,
-    },
-    ItemTemplate {
-        name: "wand of lightning",
-        glyph: '/',
-        fg: Color::Yellow,
-        kind: ItemKind::Wand { kind: WandKind::Lightning, charges: 4 },
-        min_depth: 4,
-    },
-    // ---- Throwables ----------------------------------------------------
-    ItemTemplate {
-        name: "oil flask",
+        name,
         glyph: '!',
-        fg: Color::DarkRed,
-        kind: ItemKind::Throwable(ThrowableKind::OilFlask),
-        min_depth: 2,
-    },
-    ItemTemplate {
-        name: "smoke bomb",
-        glyph: '!',
-        fg: Color::DarkGrey,
-        kind: ItemKind::Throwable(ThrowableKind::SmokeBomb),
-        min_depth: 3,
-    },
-    // ---- Food ----------------------------------------------------------
-    // ItemTemplate {
-    //     name: "food ration",
-    //     glyph: '%',
-    //     fg: Color::DarkYellow,
-    //     kind: ItemKind::Food { nutrition: 400, poisonous: false },
-    //     min_depth: 1,
-    // },
+        fg,
+        kind: ItemKind::Throwable(kind),
+        min_depth,
+    }
+}
+
+pub const TEMPLATES: &[ItemTemplate] = &[
+    // Potions
+    potion("potion of healing", Color::Magenta, PotionEffect::Heal(8), 1),
+    potion(
+        "potion of greater healing",
+        Color::Red,
+        PotionEffect::GreaterHeal(18),
+        3,
+    ),
+    potion("potion of full healing", Color::White, PotionEffect::FullHeal, 6),
+    potion(
+        "potion of vitality",
+        Color::Yellow,
+        PotionEffect::MaxHpUp(2),
+        5,
+    ),
+    potion(
+        "potion of strength",
+        Color::DarkRed,
+        PotionEffect::BuffAttack { amount: 2, turns: 50 },
+        3,
+    ),
+    potion(
+        "potion of vision",
+        Color::Blue,
+        PotionEffect::BuffVision { amount: 4, turns: 50 },
+        3,
+    ),
+    potion(
+        "potion of cure poison",
+        Color::Green,
+        PotionEffect::CurePoison,
+        3,
+    ),
+    potion(
+        "potion of giant strength",
+        Color::DarkMagenta,
+        PotionEffect::BuffAttack { amount: 4, turns: 50 },
+        10,
+    ),
+    potion(
+        "potion of far sight",
+        Color::Cyan,
+        PotionEffect::BuffVision { amount: 6, turns: 50 },
+        11,
+    ),
+    potion(
+        "potion of fortitude",
+        Color::DarkYellow,
+        PotionEffect::MaxHpUp(4),
+        12,
+    ),
+    // Scrolls
+    scroll("scroll of mapping", Color::Cyan, ScrollKind::Mapping, 1),
+    scroll("scroll of teleport", Color::Blue, ScrollKind::Teleport, 3),
+    scroll(
+        "scroll of magic missile",
+        Color::Red,
+        ScrollKind::MagicMissile,
+        3,
+    ),
+    scroll(
+        "scroll of enchant weapon",
+        Color::Yellow,
+        ScrollKind::EnchantWeapon,
+        4,
+    ),
+    scroll(
+        "scroll of enchant armor",
+        Color::Yellow,
+        ScrollKind::EnchantArmor,
+        4,
+    ),
+    scroll("scroll of fear", Color::Magenta, ScrollKind::Fear, 5),
+    scroll("scroll of summon", Color::Green, ScrollKind::Summon, 5),
+    scroll("scroll of light", Color::DarkYellow, ScrollKind::Light, 2),
+    scroll("scroll of recall", Color::DarkCyan, ScrollKind::Recall, 5),
+    scroll(
+        "scroll of chain lightning",
+        Color::White,
+        ScrollKind::ChainLightning,
+        12,
+    ),
+    scroll(
+        "scroll of greater fear",
+        Color::DarkMagenta,
+        ScrollKind::GreaterFear,
+        13,
+    ),
+    scroll("scroll of legion", Color::Green, ScrollKind::Legion, 14),
+    // Weapons
+    weapon("iron dagger", Color::White, 1, 1),
+    weapon("short sword", Color::White, 2, 2),
+    weapon("iron sword", Color::White, 3, 4),
+    weapon("war hammer", Color::Grey, 4, 5),
+    weapon("battle axe", Color::DarkGrey, 4, 5),
+    weapon("elven blade", Color::Green, 3, 4),
+    weapon("greatsword", Color::White, 5, 7),
+    weapon("enchanted longsword", Color::Cyan, 6, 10),
+    weapon("runed greatsword", Color::Yellow, 7, 12),
+    weapon("obsidian blade", Color::DarkGrey, 8, 16),
+    // Armor
+    armor("leather armor", Color::DarkYellow, 1, 1),
+    armor("studded leather", Color::DarkYellow, 1, 2),
+    armor("ring mail", Color::Grey, 2, 4),
+    armor("chain mail", Color::Grey, 2, 5),
+    armor("mythril chain", Color::Cyan, 3, 8),
+    armor("plate mail", Color::White, 4, 9),
+    armor("gothic plate", Color::DarkGrey, 5, 12),
+    armor("dragon scale armor", Color::Red, 6, 17),
+    // Rings
+    ring("ring of protection", Color::Cyan, RingEffect::Protection, 4),
+    ring("ring of vision", Color::Yellow, RingEffect::Vision, 6),
+    ring("ring of regen", Color::Green, RingEffect::Regen, 13),
+    // Amulets
+    amulet(
+        "amulet of teleport control",
+        Color::Magenta,
+        AmuletEffect::TeleportControl,
+        12,
+    ),
+    // Wands
+    wand("wand of fire", Color::Red, WandKind::Fire, 5, 4),
+    wand("wand of cold", Color::Cyan, WandKind::Cold, 5, 4),
+    wand("wand of lightning", Color::Yellow, WandKind::Lightning, 4, 6),
+    wand("wand of storms", Color::White, WandKind::Storms, 4, 15),
+    // Throwables
+    throwable("oil flask", Color::DarkRed, ThrowableKind::OilFlask, 3),
+    throwable("smoke bomb", Color::DarkGrey, ThrowableKind::SmokeBomb, 4),
 ];
 
 /// Pick a template appropriate for the supplied dungeon depth.
 pub fn pick_for_depth<R: rand::Rng>(depth: u32, rng: &mut R) -> Option<&'static ItemTemplate> {
-    let candidates: Vec<&ItemTemplate> =
-        TEMPLATES.iter().filter(|t| t.min_depth <= depth).collect();
+    let candidates: Vec<(&ItemTemplate, u32)> = TEMPLATES
+        .iter()
+        .filter(|t| t.min_depth <= depth)
+        .map(|t| (t, pick_weight(depth, t.min_depth)))
+        .collect();
     if candidates.is_empty() {
         return None;
     }
-    let idx = rng.gen_range(0..candidates.len());
-    Some(candidates[idx])
+    pick_weighted(&candidates, rng)
+}
+
+fn pick_weight(depth: u32, min_depth: u32) -> u32 {
+    let age = depth.saturating_sub(min_depth).min(8);
+    1 + (8 - age)
+}
+
+fn pick_weighted<R: rand::Rng>(
+    candidates: &[(&'static ItemTemplate, u32)],
+    rng: &mut R,
+) -> Option<&'static ItemTemplate> {
+    let total: u32 = candidates.iter().map(|(_, weight)| *weight).sum();
+    if total == 0 {
+        return None;
+    }
+    let mut roll = rng.gen_range(0..total);
+    for (template, weight) in candidates {
+        if roll < *weight {
+            return Some(*template);
+        }
+        roll -= *weight;
+    }
+    candidates.last().map(|(template, _)| *template)
 }

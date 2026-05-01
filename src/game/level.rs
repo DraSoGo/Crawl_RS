@@ -127,7 +127,8 @@ fn spawn_mobs(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64M
 }
 
 fn spawn_mob(world: &mut World, t: &MobTemplate, x: i32, y: i32, depth: u32) {
-    // +25% HP/atk per depth level — by depth 10 mobs are ~3.25× tier-1 stats.
+    // At +12% HP/atk per depth level, floor 20 mobs are ~3.28× their base
+    // template stats. The content tables are tuned around that multiplier.
     let hp_scale = 1.0 + config::WORLD.depth_hp_scale * ((depth as f32) - 1.0).max(0.0);
     let attack_scale =
         1.0 + config::WORLD.depth_attack_scale * ((depth as f32) - 1.0).max(0.0);

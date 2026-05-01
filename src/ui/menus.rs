@@ -143,10 +143,13 @@ fn describe_scroll(s: ScrollKind) -> &'static str {
         ScrollKind::Teleport => "(random teleport)",
         ScrollKind::Identify => "(identify)",
         ScrollKind::MagicMissile => "(zap nearest mob)",
+        ScrollKind::ChainLightning => "(zap 3 nearby mobs)",
         ScrollKind::EnchantWeapon => "(+1 weapon)",
         ScrollKind::EnchantArmor => "(+1 armor)",
         ScrollKind::Fear => "(routs nearby)",
+        ScrollKind::GreaterFear => "(routs nearby longer)",
         ScrollKind::Summon => "(summon allies)",
+        ScrollKind::Legion => "(summon many allies)",
         ScrollKind::Light => "(extends FOV)",
         ScrollKind::Recall => "(to up-stair)",
     }
@@ -171,6 +174,7 @@ fn describe_wand(k: WandKind) -> &'static str {
         WandKind::Fire => "fire",
         WandKind::Cold => "cold",
         WandKind::Lightning => "lightning",
+        WandKind::Storms => "storms",
     }
 }
 
