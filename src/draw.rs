@@ -12,7 +12,7 @@ use crate::run_state::{
 };
 use crate::ui::{book, help, menus, status, threats, Buffer, Cell, MessageLog, Severity};
 
-const TOP_BAR_BG: Color = Color::DarkBlue;
+const TOP_BAR_BG: Color = Color::Reset;
 
 pub fn draw_run(buffer: &mut Buffer, state: &RunState) {
     match state.mode {
@@ -58,7 +58,7 @@ fn draw_top_bar(buffer: &mut Buffer, state: &RunState) {
 
     let mut x = 1u16;
     x = put_segment(buffer, x, 0, "DEPTH ", Color::DarkCyan, TOP_BAR_BG);
-    x = put_segment(buffer, x, 0, &format!("{:<3}", state.depth), Color::White, TOP_BAR_BG);
+    x = put_segment(buffer, x, 0, &format!("{:<3}", state.depth), Color::Yellow, TOP_BAR_BG);
     x = put_segment(buffer, x, 0, "  LV ", Color::Cyan, TOP_BAR_BG);
     x = put_segment(
         buffer,
