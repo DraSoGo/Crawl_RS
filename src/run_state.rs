@@ -23,9 +23,10 @@ use crate::save::{self, scores::{self, ScoreEntry}};
 use crate::ui::{Buffer, MessageLog};
 
 pub const PLAYER_LAYER: u8 = config::UI.player_layer;
+pub const TOP_BAR_ROWS: u16 = config::UI.top_bar_rows;
 pub const HUD_ROWS: u16 = config::UI.hud_rows;
 pub const LOG_ROWS: u16 = config::UI.log_rows;
-pub const RESERVED_ROWS: u16 = HUD_ROWS + LOG_ROWS;
+pub const RESERVED_ROWS: u16 = TOP_BAR_ROWS + HUD_ROWS + LOG_ROWS;
 pub const PLAYER_FOV_RADIUS: i32 = config::PLAYER.fov_radius;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -1,6 +1,7 @@
 #[derive(Clone, Copy, Debug)]
 pub struct UiConfig {
     pub player_layer: u8,
+    pub top_bar_rows: u16,
     pub hud_rows: u16,
     pub log_rows: u16,
 }
@@ -51,6 +52,7 @@ pub struct HungerConfig {
 
 pub const UI: UiConfig = UiConfig {
     player_layer: 200,
+    top_bar_rows: 1,
     hud_rows: 1,
     log_rows: 5,
 };
@@ -77,7 +79,7 @@ pub const PROGRESSION: ProgressionConfig = ProgressionConfig {
 pub const WORLD: WorldConfig = WorldConfig {
     final_depth: 20,
     floor_difficulty_base: 20,
-    floor_difficulty_per_depth: 10,
+    floor_difficulty_per_depth: 18,
     depth_hp_scale: 0.12,
     depth_attack_scale: 0.12,
     ranged_attack_range: 2,

@@ -9,11 +9,13 @@ use crate::map::fov::Visibility;
 use crate::map::Map;
 use crate::ui::{Buffer, Cell};
 
-pub fn draw_map(map: &Map, fov: Option<&Visibility>, buffer: &mut Buffer) {
+pub fn draw_map(map: &Map, fov: Option<&Visibility>, buffer: &mut Buffer, y_offset: u16) {
     let bw = buffer.width() as i32;
     let bh = buffer.height() as i32;
+    let oy = y_offset as i32;
     for (x, y, tile) in map.iter() {
-        if x < 0 || y < 0 || x >= bw || y >= bh {
+        let py = y + oy;
+        if x < 0 || py < 0 || x >= bw || py >= bh {
             continue;
         }
         let (visible, revealed) = match fov {
@@ -21,17 +23,15 @@ pub fn draw_map(map: &Map, fov: Option<&Visibility>, buffer: &mut Buffer) {
             None => (true, true),
         };
         if !visible && !revealed {
-            // Unknown — leave as blank background.
-            buffer.put(x as u16, y as u16, Cell::BLANK);
+            buffer.put(x as u16, py as u16, Cell::BLANK);
             continue;
         }
         let fg = if visible {
             tile.fg()
         } else {
-            // Memory: dim everything to dark grey for a uniform "fog" feel.
             Color::DarkGrey
         };
-        buffer.put(x as u16, y as u16, Cell::new(tile.glyph(), fg, tile.bg()));
+        buffer.put(x as u16, py as u16, Cell::new(tile.glyph(), fg, tile.bg()));
     }
 }
 
@@ -46,7 +46,7 @@ pub fn player_fov(world: &World) -> Option<Visibility> {
     found
 }
 
-pub fn draw_entities(world: &World, fov: Option<&Visibility>, buffer: &mut Buffer) {
+pub fn draw_entities(world: &World, fov: Option<&Visibility>, buffer: &mut Buffer, y_offset: u16) {
     let player_pos = world
         .query::<(&Player, &Position)>()
         .iter()
@@ -80,13 +80,15 @@ pub fn draw_entities(world: &World, fov: Option<&Visibility>, buffer: &mut Buffe
 
     let w = buffer.width() as i32;
     let h = buffer.height() as i32;
+    let oy = y_offset as i32;
     for (x, y, render) in entries {
-        if x < 0 || y < 0 || x >= w || y >= h {
+        let py = y + oy;
+        if x < 0 || py < 0 || x >= w || py >= h {
             continue;
         }
         buffer.put(
             x as u16,
-            y as u16,
+            py as u16,
             Cell::new(render.glyph, render.fg, render.bg),
         );
     }
