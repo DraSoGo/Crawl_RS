@@ -7,8 +7,8 @@ use hecs::World;
 use crate::ecs::components::Progression;
 use crate::ecs::systems::render::{draw_entities, draw_map, player_fov};
 use crate::run_state::{
-    player_combat, player_hp, player_kills, player_level, player_xp, RunState, UiMode,
-    HUD_ROWS, LOG_ROWS, RESERVED_ROWS, TOP_BAR_ROWS,
+    player_combat, player_hp, player_kills, player_level, player_position, player_xp,
+    RunState, UiMode, HUD_ROWS, LOG_ROWS, RESERVED_ROWS, TOP_BAR_ROWS,
 };
 use crate::ui::{book, help, menus, status, threats, Buffer, Cell, MessageLog, Severity};
 
@@ -31,11 +31,25 @@ pub fn draw_run(buffer: &mut Buffer, state: &RunState) {
 
 fn draw_world(buffer: &mut Buffer, state: &RunState) {
     let visibility = player_fov(&state.world);
+    let (cam_x, cam_y) = camera_offset(buffer, state);
     draw_top_bar(buffer, state);
-    draw_map(&state.map, visibility.as_ref(), buffer, TOP_BAR_ROWS);
-    draw_entities(&state.world, visibility.as_ref(), buffer, TOP_BAR_ROWS);
+    draw_map(&state.map, visibility.as_ref(), buffer, TOP_BAR_ROWS, cam_x, cam_y);
+    draw_entities(&state.world, visibility.as_ref(), buffer, TOP_BAR_ROWS, cam_x, cam_y);
     draw_log(buffer, &state.log);
     draw_hud(buffer, state);
+}
+
+fn camera_offset(buffer: &Buffer, state: &RunState) -> (i32, i32) {
+    let (px, py) = player_position(&state.world)
+        .map(|p| (p.x, p.y))
+        .unwrap_or((0, 0));
+    let vw = buffer.width() as i32;
+    let vh = (buffer.height() as i32).saturating_sub(RESERVED_ROWS as i32);
+    let map_w = state.map.width();
+    let map_h = state.map.height();
+    let cam_x = (px - vw / 2).clamp(0, (map_w - vw).max(0));
+    let cam_y = (py - vh / 2).clamp(0, (map_h - vh).max(0));
+    (cam_x, cam_y)
 }
 
 /// Coloured top-bar with depth, level/XP, HP gauge, atk, def, seed.

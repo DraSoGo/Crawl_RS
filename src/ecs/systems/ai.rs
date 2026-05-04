@@ -32,12 +32,12 @@ pub fn plan<R: Rng>(
     let intent = match view.ai.kind {
         AiKind::Hostile => plan_hostile(world, map, rng, view, can_attack),
         AiKind::Sleeper { wake_radius } => {
-            plan_sleeper(world, entity, view, wake_radius, can_attack)
+            plan_sleeper(world, rng, entity, view, wake_radius, can_attack)
         }
         AiKind::Fleeing { flee_below_pct } => {
             plan_fleeing(world, map, rng, view, flee_below_pct, can_attack)
         }
-        AiKind::Ranged { .. } => plan_ranged(world, map, view, can_attack),
+        AiKind::Ranged { .. } => plan_ranged(world, map, rng, view, can_attack),
         AiKind::Mimic { revealed, .. } => {
             plan_mimic(world, map, rng, entity, view, revealed, can_attack)
         }
@@ -137,8 +137,9 @@ fn plan_hostile<R: Rng>(
     random_step(rng)
 }
 
-fn plan_sleeper(
+fn plan_sleeper<R: Rng>(
     world: &mut World,
+    rng: &mut R,
     entity: Entity,
     view: MobView,
     wake_radius: i32,
@@ -146,7 +147,8 @@ fn plan_sleeper(
 ) -> Intent {
     let target = match enemy_position_for(world, view) {
         Some(p) => p,
-        None => return Intent::None,
+        // No enemy at all → still drift around the room.
+        None => return random_step(rng),
     };
     let dx = target.0 - view.x;
     let dy = target.1 - view.y;
@@ -160,7 +162,9 @@ fn plan_sleeper(
         }
         return Intent::Move(dx.signum(), dy.signum());
     }
-    Intent::None
+    // Player is outside the wake radius — sleeper stays asleep, but its
+    // body still shuffles around so the floor doesn't feel like a museum.
+    random_step(rng)
 }
 
 fn plan_fleeing<R: Rng>(
@@ -192,10 +196,16 @@ fn mob_hp_pct(world: &World, view: MobView) -> i32 {
     100
 }
 
-fn plan_ranged(world: &World, map: &Map, view: MobView, can_attack: bool) -> Intent {
+fn plan_ranged<R: Rng>(
+    world: &World,
+    map: &Map,
+    rng: &mut R,
+    view: MobView,
+    can_attack: bool,
+) -> Intent {
     let (target_pos, target_entity) = match enemy_with_entity(world, view) {
         Some(p) => p,
-        None => return Intent::None,
+        None => return random_step(rng),
     };
     let dx = target_pos.0 - view.x;
     let dy = target_pos.1 - view.y;
@@ -204,7 +214,8 @@ fn plan_ranged(world: &World, map: &Map, view: MobView, can_attack: bool) -> Int
     if dist_sq > sight_sq
         || !map.line_of_sight(view.x, view.y, target_pos.0, target_pos.1)
     {
-        return Intent::None;
+        // Out of sight: don't ranged-attack, just patrol the room.
+        return random_step(rng);
     }
     if dist_sq <= config::WORLD.ranged_attack_range * config::WORLD.ranged_attack_range {
         if !can_attack {

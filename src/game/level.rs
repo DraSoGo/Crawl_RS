@@ -16,6 +16,7 @@ use crate::ecs::components::{
     Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
 };
 use crate::map::gen::{bsp_generate, BspConfig, Dungeon};
+use crate::map::gen::bsp::Rect;
 use crate::map::Map;
 
 pub const FINAL_DEPTH: u32 = config::WORLD.final_depth;
@@ -102,27 +103,36 @@ fn place_player(world: &mut World, dungeon: &Dungeon) {
 
 fn spawn_mobs(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64Mcg) {
     let rooms: Vec<_> = dungeon.rooms.iter().skip(1).copied().collect();
-    let rooms = if rooms.is_empty() {
-        dungeon.rooms.clone()
-    } else {
-        rooms
+    let rooms = if rooms.is_empty() { dungeon.rooms.clone() } else { rooms };
+    let extra_chance = ((depth.saturating_sub(1) as f32)
+        * config::MOB_SPAWN.extra_mob_chance_per_depth)
+        .clamp(0.0, 0.95) as f64;
+    for room in &rooms {
+        // Every room gets exactly one mob.
+        place_mob_in_room(world, *room, depth, rng);
+        // Roll for extra mobs up to the configured cap.
+        for _ in 0..config::MOB_SPAWN.max_extra_mobs_per_room {
+            if rng.gen_bool(extra_chance) {
+                place_mob_in_room(world, *room, depth, rng);
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+fn place_mob_in_room(world: &mut World, room: Rect, depth: u32, rng: &mut Pcg64Mcg) {
+    let template = match mobs::pick_for_depth(depth, rng) {
+        Some(t) => t,
+        None => return,
     };
-    let mut budget = floor_difficulty_budget(depth);
-    let mut attempts = 0u32;
-    while budget > 0 && attempts < 256 {
-        attempts += 1;
-        let template = match mobs::pick_for_budget(depth, budget, rng) {
-            Some(template) => template,
-            None => break,
-        };
-        let room = rooms[rng.gen_range(0..rooms.len())];
+    for _ in 0..8 {
         let x = rng.gen_range(room.x..room.x + room.w);
         let y = rng.gen_range(room.y..room.y + room.h);
-        if tile_has_blocker(world, x, y) {
-            continue;
+        if !tile_has_blocker(world, x, y) {
+            spawn_mob(world, template, x, y, depth);
+            return;
         }
-        spawn_mob(world, template, x, y, depth);
-        budget = budget.saturating_sub(template.difficulty);
     }
 }
 
@@ -177,20 +187,18 @@ fn spawn_mob(world: &mut World, t: &MobTemplate, x: i32, y: i32, depth: u32) {
 
 fn spawn_items(world: &mut World, dungeon: &Dungeon, depth: u32, rng: &mut Pcg64Mcg) {
     for room in dungeon.rooms.iter() {
-        let chance = 0.7 + 0.06 * (depth as f64);
-        if !rng.gen_bool(chance.clamp(0.0, 0.98)) {
-            continue;
-        }
         let template = match items::pick_for_depth(depth, rng) {
             Some(t) => t,
             None => continue,
         };
-        let x = rng.gen_range(room.x..room.x + room.w);
-        let y = rng.gen_range(room.y..room.y + room.h);
-        if tile_has_item(world, x, y) {
-            continue;
+        for _ in 0..8 {
+            let x = rng.gen_range(room.x..room.x + room.w);
+            let y = rng.gen_range(room.y..room.y + room.h);
+            if !tile_has_item(world, x, y) {
+                spawn_item(world, template, x, y);
+                break;
+            }
         }
-        spawn_item(world, template, x, y);
     }
 }
 
@@ -238,11 +246,6 @@ fn tile_has_item(world: &World, x: i32, y: i32) -> bool {
         .query::<(&Position, &Item)>()
         .iter()
         .any(|(_, (pos, _))| pos.x == x && pos.y == y)
-}
-
-fn floor_difficulty_budget(depth: u32) -> u32 {
-    config::WORLD.floor_difficulty_base
-        + depth.saturating_mul(config::WORLD.floor_difficulty_per_depth)
 }
 
 #[cfg(test)]

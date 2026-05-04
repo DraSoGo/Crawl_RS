@@ -30,11 +30,25 @@ pub struct ProgressionConfig {
 #[derive(Clone, Copy, Debug)]
 pub struct WorldConfig {
     pub final_depth: u32,
-    pub floor_difficulty_base: u32,
-    pub floor_difficulty_per_depth: u32,
     pub depth_hp_scale: f32,
     pub depth_attack_scale: f32,
     pub ranged_attack_range: i32,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct MapConfig {
+    pub width: i32,
+    pub height: i32,
+}
+
+/// Per-room spawning. Each room always gets 1 mob and 1 item.
+/// Extra mobs roll against `extra_mob_chance_per_depth * (depth - 1)`,
+/// up to `max_extra_mobs_per_room` additional mobs.
+/// depth 5 → 4 * 0.0625 = 25% chance of a 2nd mob per room.
+#[derive(Clone, Copy, Debug)]
+pub struct MobSpawnConfig {
+    pub extra_mob_chance_per_depth: f32,
+    pub max_extra_mobs_per_room: u32,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -78,11 +92,19 @@ pub const PROGRESSION: ProgressionConfig = ProgressionConfig {
 
 pub const WORLD: WorldConfig = WorldConfig {
     final_depth: 20,
-    floor_difficulty_base: 20,
-    floor_difficulty_per_depth: 18,
     depth_hp_scale: 0.12,
     depth_attack_scale: 0.12,
     ranged_attack_range: 2,
+};
+
+pub const MAP: MapConfig = MapConfig {
+    width: 80,
+    height: 40,
+};
+
+pub const MOB_SPAWN: MobSpawnConfig = MobSpawnConfig {
+    extra_mob_chance_per_depth: 0.0625,
+    max_extra_mobs_per_room: 3,
 };
 
 pub const COMBAT: CombatConfig = CombatConfig {

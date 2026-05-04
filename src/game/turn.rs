@@ -23,7 +23,7 @@ pub fn run_enemy_turn<R: Rng>(
     if combat::player_dead(world) {
         return;
     }
-    status::tick(world, log, rng);
+    status::tick(world, map, log, rng);
     if combat::player_dead(world) {
         return;
     }

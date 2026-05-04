@@ -59,10 +59,8 @@ pub struct RunState {
     pub book_item_cursor: usize,
 }
 
-pub fn level_dims(buffer: &Buffer) -> (i32, i32) {
-    let w = (buffer.width() as i32).max(20);
-    let h = ((buffer.height().saturating_sub(RESERVED_ROWS)) as i32).max(12);
-    (w, h)
+pub fn level_dims(_buffer: &Buffer) -> (i32, i32) {
+    (config::MAP.width, config::MAP.height)
 }
 
 pub fn start_new_run(seed: u64, buffer: &Buffer) -> RunState {

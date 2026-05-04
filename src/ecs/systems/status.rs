@@ -8,14 +8,15 @@ use crate::ecs::components::{
     Ai, BlocksTile, Dead, Faction, FieldOfView, HungerClock, HungerState, Mob, Name,
     Player, Position, Regen, Renderable, Stats, StatusEffects, Summoner,
 };
+use crate::map::Map;
 use crate::ui::{MessageLog, Severity};
 
-pub fn tick<R: Rng>(world: &mut World, log: &mut MessageLog, rng: &mut R) {
+pub fn tick<R: Rng>(world: &mut World, map: &Map, log: &mut MessageLog, rng: &mut R) {
     tick_status_effects(world, log);
     tick_regen_components(world);
     // Hunger system disabled per design call: too much bookkeeping for v0.1.
     // `tick_hunger` is retained for reference but no longer invoked.
-    tick_summoners(world, log, rng);
+    tick_summoners(world, map, log, rng);
     check_deaths(world);
 }
 
@@ -178,13 +179,44 @@ fn check_deaths(world: &mut World) {
     }
 }
 
-fn tick_summoners<R: Rng>(world: &mut World, log: &mut MessageLog, rng: &mut R) {
+fn tick_summoners<R: Rng>(
+    world: &mut World,
+    map: &Map,
+    log: &mut MessageLog,
+    rng: &mut R,
+) {
+    // Player target — summoners only fire when they can actually see them.
+    let player_pos = world
+        .query::<(&Player, &Position)>()
+        .iter()
+        .map(|(_, (_, p))| *p)
+        .next();
     let summoners: Vec<(Entity, Position, Summoner)> = world
         .query::<(&Position, &Summoner)>()
         .iter()
         .map(|(e, (p, s))| (e, *p, *s))
         .collect();
-    for (_caster, pos, summoner) in summoners {
+    for (caster, pos, summoner) in summoners {
+        let player = match player_pos {
+            Some(p) => p,
+            None => continue,
+        };
+        // Vision gate: caster's `Ai.sight_radius` defines its perception
+        // range, and the line of sight must be clear. Summons are too
+        // theatrical to cast at empty rooms.
+        let sight_radius = world
+            .get::<&Ai>(caster)
+            .map(|ai| ai.sight_radius)
+            .unwrap_or(0);
+        let dx = player.x - pos.x;
+        let dy = player.y - pos.y;
+        let dist_sq = dx * dx + dy * dy;
+        if dist_sq > sight_radius * sight_radius {
+            continue;
+        }
+        if !map.line_of_sight(pos.x, pos.y, player.x, player.y) {
+            continue;
+        }
         if rng.gen_range(0..100) >= summoner.chance_pct {
             continue;
         }

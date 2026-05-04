@@ -182,15 +182,11 @@ const fn no_on_hit() -> OnHit {
     OnHit { poison_turns: 0, poison_dmg: 0, paralysis_turns: 0 }
 }
 
-/// Pick a template appropriate for the supplied dungeon depth and budget.
-pub fn pick_for_budget<R: rand::Rng>(
-    depth: u32,
-    budget: u32,
-    rng: &mut R,
-) -> Option<&'static MobTemplate> {
+/// Pick a template appropriate for the supplied dungeon depth.
+pub fn pick_for_depth<R: rand::Rng>(depth: u32, rng: &mut R) -> Option<&'static MobTemplate> {
     let candidates: Vec<(&MobTemplate, u32)> = TEMPLATES
         .iter()
-        .filter(|t| t.min_depth <= depth && t.difficulty <= budget)
+        .filter(|t| t.min_depth <= depth)
         .map(|t| (t, pick_weight(depth, t.min_depth, t.difficulty)))
         .collect();
     if candidates.is_empty() {
