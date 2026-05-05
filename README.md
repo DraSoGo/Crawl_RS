@@ -9,7 +9,7 @@ A classic ASCII roguelike in pure terminal Rust. Procedurally generated
 dungeons, turn-based combat, permadeath. Runs over SSH; scales from a phone
 shell to a 4K terminal.
 
-Current version: `0.2.0`
+Current version: `0.1.1`
 
 ---
 
@@ -22,29 +22,38 @@ Latest release: <https://github.com/drasogun/crawl-rs/releases/latest>
 
 ### Option A — pre-built binaries (no Rust required)
 
-Each tagged release on GitHub attaches archives for the three supported
-targets. Download the one that matches your platform from the
-[releases page](https://github.com/drasogun/crawl-rs/releases/latest),
-extract, and run the binary.
+Each tagged release on GitHub attaches binaries for all three platforms.
+Download the one that matches your OS from the
+[releases page](https://github.com/drasogun/crawl-rs/releases/latest).
 
-#### Linux (x86_64)
+#### Linux (x86_64) — binary
 
 ```sh
-curl -L -o crawl-rs.tar.gz \
-  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-x86_64-unknown-linux-gnu.tar.gz
-tar xzf crawl-rs.tar.gz
-sudo mv crawl-rs-*/crawl-rs /usr/local/bin/
+curl -L -o crawl-rs \
+  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-linux-x86_64
+chmod +x crawl-rs
+sudo mv crawl-rs /usr/local/bin/
 crawl-rs
 ```
 
-#### macOS (Apple Silicon, arm64)
+#### Linux (x86_64) — Debian / Ubuntu package
 
 ```sh
-curl -L -o crawl-rs.tar.gz \
-  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-aarch64-apple-darwin.tar.gz
-tar xzf crawl-rs.tar.gz
-sudo mv crawl-rs-*/crawl-rs /usr/local/bin/
-xattr -d com.apple.quarantine /usr/local/bin/crawl-rs   # only needed once
+curl -L -o crawl-rs.deb \
+  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs_linux_amd64.deb
+sudo dpkg -i crawl-rs.deb
+crawl-rs
+```
+
+#### macOS (universal — Intel + Apple Silicon)
+
+```sh
+curl -L -o crawl-rs \
+  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-macos-universal
+chmod +x crawl-rs
+sudo mv crawl-rs /usr/local/bin/
+# Remove quarantine flag added by macOS Gatekeeper (only needed once):
+xattr -d com.apple.quarantine /usr/local/bin/crawl-rs
 crawl-rs
 ```
 
@@ -54,14 +63,13 @@ PowerShell:
 
 ```powershell
 Invoke-WebRequest `
-  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-x86_64-pc-windows-msvc.zip `
-  -OutFile crawl-rs.zip
-Expand-Archive crawl-rs.zip -DestinationPath .
-.\crawl-rs-*\crawl-rs.exe
+  https://github.com/drasogun/crawl-rs/releases/latest/download/crawl-rs-windows-x86_64.exe `
+  -OutFile crawl-rs.exe
+.\crawl-rs.exe
 ```
 
 Move `crawl-rs.exe` somewhere on your `PATH` (e.g. `%USERPROFILE%\bin`) to
-launch it from any directory.
+launch it from any directory. Windows Terminal gives the best rendering.
 
 ### Option B — build from source
 

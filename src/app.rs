@@ -80,10 +80,6 @@ pub fn drive(opts: CliOpts) -> Result<()> {
             },
             Event::Resize(w, h) => {
                 buffer.resize(w.max(1), h.max(1));
-                if let Screen::Run(state) = &mut screen {
-                    let seed = state.seed;
-                    *state = start_new_run(seed, &buffer);
-                }
                 needs_redraw = true;
             }
             _ => {}

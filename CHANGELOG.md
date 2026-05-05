@@ -5,6 +5,33 @@ All notable changes to crawl-rs are recorded here. Format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-05
+
+Balance, viewport, and stability fixes.
+
+### Added
+- GitHub Actions release workflow: builds Linux binary + `.deb`, Windows `.exe`,
+  and macOS universal binary (Intel + Apple Silicon) on every `v*` tag.
+- CI workflow: runs `cargo test` and `cargo build` on every push to main.
+
+### Changed
+- Map dimensions are now fixed at 80×40 tiles regardless of terminal size.
+  A scrolling viewport centers on the player and pans as they move, so the
+  playfield is the same on every screen.
+- Mob spawning replaced: each room (except the start room) gets exactly one
+  mob. Extra mobs roll per room based on depth — depth 5 gives a 25% chance
+  of a second mob per room, scaling up to 95% at depth 17+, with up to 3
+  extras per room configurable in `config::MOB_SPAWN`.
+- Item spawning replaced: each room gets exactly one item, independent of
+  screen size or room count, so loot density is uniform across all terminals.
+
+### Fixed
+- Resizing the terminal no longer resets the current run. The buffer resizes
+  and the camera adjusts; game state is preserved.
+- Map tiles and entity glyphs can no longer overwrite the top status bar
+  (HP gauge, depth, level, seed) when the player scrolls near the top of
+  the map. The render pipeline now clips to `y >= TOP_BAR_ROWS`.
+
 ## [0.2.0] - 2026-04-28
 
 Extended the dungeon from 10 floors to 20 and added a new late-game

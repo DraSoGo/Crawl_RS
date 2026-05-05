@@ -25,7 +25,7 @@ pub fn draw_map(
     for (x, y, tile) in map.iter() {
         let sx = x - cam_x;
         let sy = y - cam_y + oy;
-        if sx < 0 || sy < 0 || sx >= bw || sy >= bh {
+        if sx < 0 || sy < oy || sx >= bw || sy >= bh {
             continue;
         }
         let (visible, revealed) = match fov {
@@ -97,7 +97,7 @@ pub fn draw_entities(
     for (x, y, render) in entries {
         let sx = x - cam_x;
         let sy = y - cam_y + oy;
-        if sx < 0 || sy < 0 || sx >= w || sy >= h {
+        if sx < 0 || sy < oy || sx >= w || sy >= h {
             continue;
         }
         buffer.put(
