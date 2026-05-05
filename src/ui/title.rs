@@ -46,10 +46,7 @@ impl MenuState {
             (MenuChoice::Continue, save_exists),
             (MenuChoice::Quit, true),
         ];
-        Self {
-            selected: 0,
-            items,
-        }
+        Self { selected: 0, items }
     }
 
     pub fn move_up(&mut self) {

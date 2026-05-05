@@ -264,7 +264,13 @@ mod tests {
         // only sums to 4. The extra +3 must be visible so the parens add up.
         let text = format_stat_line(
             7,
-            StatBreakdown { total: 4, base: 1, level: 1, gear: 2, buff: 0 },
+            StatBreakdown {
+                total: 4,
+                base: 1,
+                level: 1,
+                gear: 2,
+                buff: 0,
+            },
         );
         assert_eq!(text, "7 (1 base + 1 lvl + 2 gear + 3 extra)");
     }
