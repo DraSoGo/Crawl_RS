@@ -38,3 +38,15 @@ opt-level = 1
 [[bin]]
 name = "crawl-rs"
 path = "src/main.rs"
+
+[package.metadata.deb]
+maintainer = "drasogun <vdhfmfatv4321@gmail.com>"
+copyright = "2025, drasogun"
+extended-description = "Turn-based ASCII roguelike. Permadeath, procgen dungeons, terminal UI."
+depends = "$auto"
+section = "games"
+priority = "optional"
+assets = [
+    { source = "target/release/crawl-rs", dest = "usr/games/crawl-rs", mode = "755" },
+    { source = "README.md", dest = "usr/share/doc/crawl-rs/README.md", mode = "644" },
+]

@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Linux x86_64 — binary + .deb ────────────────────────────────────────
+  linux:
+    name: Linux (x86_64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Install cargo-deb
+        run: cargo install cargo-deb --locked
+
+      - name: Build .deb package
+        run: cargo deb --no-build
+
+      - name: Stage artifacts
+        run: |
+          cp target/release/crawl-rs crawl-rs-linux-x86_64
+          cp target/debian/crawl-rs_*.deb crawl-rs_linux_amd64.deb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: |
+            crawl-rs-linux-x86_64
+            crawl-rs_linux_amd64.deb
+
+  # ── Windows x86_64 — .exe ───────────────────────────────────────────────
+  windows:
+    name: Windows (x86_64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release --locked
+
+      - name: Stage artifact
+        run: cp target/release/crawl-rs.exe crawl-rs-windows-x86_64.exe
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: crawl-rs-windows-x86_64.exe
+
+  # ── macOS universal binary (Intel + Apple Silicon) ──────────────────────
+  macos:
+    name: macOS (universal)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build x86_64
+        run: cargo build --release --locked --target x86_64-apple-darwin
+
+      - name: Build arm64
+        run: cargo build --release --locked --target aarch64-apple-darwin
+
+      - name: Combine into universal binary
+        run: |
+          lipo -create -output crawl-rs-macos-universal \
+            target/x86_64-apple-darwin/release/crawl-rs \
+            target/aarch64-apple-darwin/release/crawl-rs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: crawl-rs-macos-universal
+
+  # ── GitHub Release ───────────────────────────────────────────────────────
+  release:
+    name: Publish release
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          generate_release_notes: true
+          files: |
+            crawl-rs-linux-x86_64
+            crawl-rs_linux_amd64.deb
+            crawl-rs-windows-x86_64.exe
+            crawl-rs-macos-universal
