@@ -182,3 +182,9 @@ you make.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Support
+
+If WiringWorkbench is useful to you, you can support the project here:
+
+[Support Me](https://buymeacoffee.com/drasogo)
